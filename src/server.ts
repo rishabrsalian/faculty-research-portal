@@ -6,12 +6,22 @@ import { logger } from './utils/logger';
 // ─── Start Server ──────────────────────────────────────────────────────────────
 async function startServer(): Promise<void> {
   // 1. Test database connectivity before accepting traffic
-  try {
-    await prisma.$connect();
-    logger.info('✅  Database connection established');
-  } catch (error) {
-    logger.error('❌  Failed to connect to database:', error);
-    process.exit(1);
+  let connected = false;
+  let attempts = 0;
+  while (!connected && attempts < 5) {
+    try {
+      attempts++;
+      await prisma.$connect();
+      logger.info('✅  Database connection established');
+      connected = true;
+    } catch (error) {
+      logger.warn(`⚠️  Database connection attempt ${attempts} failed. Retrying in 2s...`);
+      if (attempts >= 5) {
+        logger.error('❌  Failed to connect to database after 5 attempts:', error);
+        process.exit(1);
+      }
+      await new Promise((res) => setTimeout(res, 2000));
+    }
   }
 
   // 2. Start HTTP server

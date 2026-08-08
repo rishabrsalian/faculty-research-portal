@@ -8,6 +8,8 @@ import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import swaggerUi from 'swagger-ui-express';
 
+import path from 'path';
+
 // Config
 import { corsOptions } from './config/cors';
 import { env } from './config/env';
@@ -31,8 +33,20 @@ const app: Application = express();
 app.set('trust proxy', 1);
 
 // ─── Security Middleware ───────────────────────────────────────────────────────
-app.use(helmet());
+app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors(corsOptions));
+
+// ─── Serve Static Frontend Files ───────────────────────────────────────────────
+const publicPath = path.join(__dirname, '../public');
+app.use(express.static(publicPath));
+
+app.get('/login', (_req: Request, res: Response) => {
+  res.sendFile(path.join(publicPath, 'login.html'));
+});
+
+app.get('/', (_req: Request, res: Response) => {
+  res.sendFile(path.join(publicPath, 'index.html'));
+});
 
 // ─── Global Rate Limiter ───────────────────────────────────────────────────────
 const globalLimiter = rateLimit({
