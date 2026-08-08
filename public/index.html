@@ -445,12 +445,12 @@
     </div>
 
     <ul class="nav-menu">
-      <li class="nav-item"><button class="active" onclick="switchTab('dashboard')"><i class="fa-solid fa-chart-line"></i> Dashboard</button></li>
-      <li class="nav-item"><button onclick="switchTab('publications')"><i class="fa-solid fa-book-open"></i> Publications</button></li>
-      <li class="nav-item"><button onclick="switchTab('patents')"><i class="fa-solid fa-lightbulb"></i> Patents</button></li>
-      <li class="nav-item"><button onclick="switchTab('projects')"><i class="fa-solid fa-hand-holding-dollar"></i> Grants & Projects</button></li>
-      <li class="nav-item"><button onclick="switchTab('contributions')"><i class="fa-solid fa-award"></i> Contributions</button></li>
-      <li class="nav-item"><button onclick="switchTab('faculty')"><i class="fa-solid fa-users"></i> Faculty Directory</button></li>
+      <li class="nav-item"><button class="active" onclick="switchTab(event, 'dashboard')"><i class="fa-solid fa-chart-line"></i> Dashboard</button></li>
+      <li class="nav-item"><button onclick="switchTab(event, 'publications')"><i class="fa-solid fa-book-open"></i> Publications</button></li>
+      <li class="nav-item"><button onclick="switchTab(event, 'patents')"><i class="fa-solid fa-lightbulb"></i> Patents</button></li>
+      <li class="nav-item"><button onclick="switchTab(event, 'projects')"><i class="fa-solid fa-hand-holding-dollar"></i> Grants & Projects</button></li>
+      <li class="nav-item"><button onclick="switchTab(event, 'contributions')"><i class="fa-solid fa-award"></i> Contributions</button></li>
+      <li class="nav-item"><button onclick="switchTab(event, 'faculty')"><i class="fa-solid fa-users"></i> Faculty Directory</button></li>
       <li class="nav-item"><button onclick="window.open('/api-docs', '_blank')"><i class="fa-solid fa-code"></i> API Docs</button></li>
     </ul>
 
@@ -666,12 +666,15 @@
       window.location.href = '/login';
     }
 
-    function switchTab(tabName) {
+    function switchTab(evt, tabName) {
       document.querySelectorAll('.nav-item button').forEach(btn => btn.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
 
-      event.currentTarget.classList.add('active');
-      document.getElementById(`tab-${tabName}`).classList.add('active');
+      if (evt && evt.currentTarget) {
+        evt.currentTarget.classList.add('active');
+      }
+      const targetTab = document.getElementById(`tab-${tabName}`);
+      if (targetTab) targetTab.classList.add('active');
 
       const titles = {
         dashboard: ['Dashboard Overview', 'Engineering College Faculty Research & Contribution Metrics'],
@@ -700,6 +703,11 @@
           fetch('/api/v1/faculty?limit=15', { headers }),
         ]);
 
+        if (pubRes.status === 401 || patRes.status === 401) {
+          logout();
+          return;
+        }
+
         const pubs = await pubRes.json();
         const pats = await patRes.json();
         const projs = await projRes.json();
@@ -707,10 +715,10 @@
         const facs = await facRes.json();
 
         // Update Stats
-        if (pubs.meta) document.getElementById('statPublications').textContent = pubs.meta.total || pubs.data.length;
-        if (pats.meta) document.getElementById('statPatents').textContent = pats.meta.total || pats.data.length;
-        if (projs.meta) document.getElementById('statProjects').textContent = projs.meta.total || projs.data.length;
-        if (facs.meta) document.getElementById('statFaculty').textContent = facs.meta.total || facs.data.length;
+        if (pubs.meta) document.getElementById('statPublications').textContent = pubs.meta.total || pubs.data?.length || 0;
+        if (pats.meta) document.getElementById('statPatents').textContent = pats.meta.total || pats.data?.length || 0;
+        if (projs.meta) document.getElementById('statProjects').textContent = projs.meta.total || projs.data?.length || 0;
+        if (facs.meta) document.getElementById('statFaculty').textContent = facs.meta.total || facs.data?.length || 0;
 
         // Render Tables
         renderPublications(pubs.data || []);
