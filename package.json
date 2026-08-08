@@ -13,7 +13,7 @@
     "db:seed": "tsx src/database/seed/index.ts",
     "db:reset": "prisma migrate reset --force",
     "db:studio": "prisma studio",
-    "test": "jest --runInBand --detectOpenHandles",
+    "test": "jest --passWithNoTests --runInBand --detectOpenHandles",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
   },

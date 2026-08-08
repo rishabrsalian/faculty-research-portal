@@ -29,7 +29,7 @@ export class AuthService {
       data: { lastLogin: new Date() },
     });
 
-    const payload = { userId: user.id, role: user.role };
+    const payload = { userId: user.id, sub: user.id, email: user.email, role: user.role };
     const tokens = {
       accessToken: generateAccessToken(payload),
       refreshToken: generateRefreshToken(payload),
@@ -48,15 +48,15 @@ export class AuthService {
     const decoded = verifyRefreshToken(token);
 
     const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      select: { id: true, role: true, isActive: true },
+      where: { id: decoded.userId || decoded.sub },
+      select: { id: true, email: true, role: true, isActive: true },
     });
 
     if (!user || !user.isActive) {
       throw new AppError('User no longer exists or is deactivated', 401);
     }
 
-    const payload = { userId: user.id, role: user.role };
+    const payload = { userId: user.id, sub: user.id, email: user.email, role: user.role };
     return {
       accessToken: generateAccessToken(payload),
       refreshToken: generateRefreshToken(payload), // Rotate refresh token

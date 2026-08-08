@@ -45,7 +45,8 @@ export class FacultyService {
         publications: true,
         patents: true,
         projects: true,
-        contributions: true,
+        conferenceContributions: true,
+        professionalContributions: true,
       }
     });
   }

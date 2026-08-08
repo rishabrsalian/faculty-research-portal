@@ -4,6 +4,7 @@ import { Request } from 'express';
  * JWT payload structure — embedded in every access token.
  */
 export interface JwtPayload {
+  userId: string;
   sub: string;   // User UUID
   email: string;
   role: 'FACULTY' | 'ADMIN';

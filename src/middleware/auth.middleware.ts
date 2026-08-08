@@ -24,7 +24,7 @@ export const protect = async (req: Request, res: Response, next: NextFunction): 
 
     // Check if user still exists
     const currentUser = await prisma.user.findUnique({
-      where: { id: decoded.userId },
+      where: { id: decoded.userId || decoded.sub },
       select: {
         id: true,
         email: true,
@@ -43,7 +43,8 @@ export const protect = async (req: Request, res: Response, next: NextFunction): 
 
     // Grant access to protected route
     req.user = {
-      id: currentUser.id,
+      userId: currentUser.id,
+      sub: currentUser.id,
       email: currentUser.email,
       role: currentUser.role,
     };

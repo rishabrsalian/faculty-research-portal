@@ -59,7 +59,7 @@ export async function seedConferenceContributions(prisma: PrismaClient): Promise
         data: {
           facultyId: faculty.id,
           conferenceId: conference.id,
-          contributionType: c.type,
+          contributionType: c.contributionType,
           paperTitle: c.paperTitle ?? undefined,
         },
       });
