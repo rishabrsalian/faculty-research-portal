@@ -13,10 +13,17 @@ const allowedOrigins: string[] = env.CORS_ORIGINS.split(',').map((o) =>
 
 export const corsOptions: CorsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (e.g., mobile apps, Postman, curl)
+    // Allow requests with no origin (e.g., mobile apps, Postman, curl, same-origin)
     if (!origin) return callback(null, true);
 
-    if (allowedOrigins.includes(origin)) {
+    // In development mode, automatically allow any localhost / 127.0.0.1 port
+    if (env.NODE_ENV !== 'production') {
+      if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+        return callback(null, true);
+      }
+    }
+
+    if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
       return callback(null, true);
     }
 
