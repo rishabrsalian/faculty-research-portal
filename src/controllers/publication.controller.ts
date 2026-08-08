@@ -1,5 +1,11 @@
 import { Request, Response } from 'express';
 import { publicationService } from '../services/publication.service';
+import { prisma } from '../config/database';
+
+const getFacultyIdFromUserId = async (userId: string) => {
+  const profile = await prisma.facultyProfile.findUnique({ where: { userId } });
+  return profile?.id;
+};
 
 export const getPublications = async (req: Request, res: Response) => {
   const page = parseInt(req.query.page as string) || 1;
@@ -19,10 +25,9 @@ export const getPublicationById = async (req: Request, res: Response) => {
 };
 
 export const createPublication = async (req: Request, res: Response) => {
-  // Use facultyId passed in body if ADMIN, else use current user's faculty profile ID
   let facultyId = req.body.facultyId;
   if (!facultyId || req.user?.role !== 'ADMIN') {
-     facultyId = req.user?.sub; // Requires fetching faculty profile ID
+    facultyId = await getFacultyIdFromUserId(req.user!.sub);
   }
   if (!facultyId) {
     res.status(400).json({ success: false, message: 'Faculty profile required to create publication' });
@@ -40,9 +45,10 @@ export const updatePublication = async (req: Request, res: Response) => {
     return;
   }
   
-  if (req.user?.role !== 'ADMIN' && publication.facultyId !== req.user?.sub) {
-     res.status(403).json({ success: false, message: 'Forbidden' });
-     return;
+  const myFacultyId = await getFacultyIdFromUserId(req.user!.sub);
+  if (req.user?.role !== 'ADMIN' && publication.facultyId !== myFacultyId) {
+    res.status(403).json({ success: false, message: 'Forbidden' });
+    return;
   }
 
   const updated = await publicationService.updatePublication(req.params.id, req.body);
@@ -56,9 +62,10 @@ export const deletePublication = async (req: Request, res: Response) => {
     return;
   }
 
-  if (req.user?.role !== 'ADMIN' && publication.facultyId !== req.user?.sub) {
-     res.status(403).json({ success: false, message: 'Forbidden' });
-     return;
+  const myFacultyId = await getFacultyIdFromUserId(req.user!.sub);
+  if (req.user?.role !== 'ADMIN' && publication.facultyId !== myFacultyId) {
+    res.status(403).json({ success: false, message: 'Forbidden' });
+    return;
   }
 
   await publicationService.deletePublication(req.params.id);

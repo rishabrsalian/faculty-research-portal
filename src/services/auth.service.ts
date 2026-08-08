@@ -45,6 +45,9 @@ export class AuthService {
    * Refresh the access token using a valid refresh token
    */
   public async refreshToken(token: string): Promise<TokenPair> {
+    if (!token) {
+      throw new AppError('Refresh token is required', 400);
+    }
     const decoded = verifyRefreshToken(token);
 
     const user = await prisma.user.findUnique({
