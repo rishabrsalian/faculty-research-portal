@@ -1,0 +1,486 @@
+// ═══════════════════════════════════════════════════════════════
+// Faculty Research, Publication & Professional Contribution Portal
+// Prisma Schema — PostgreSQL 16
+// ═══════════════════════════════════════════════════════════════
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum Role {
+  FACULTY
+  ADMIN
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum PublicationStatus {
+  DRAFT
+  SUBMITTED
+  ACCEPTED
+  PUBLISHED
+  REJECTED
+}
+
+enum MetricType {
+  NUMBER
+  PERCENTAGE
+  RATING
+  TIME
+  DISTANCE
+}
+
+enum PatentStatus {
+  FILED
+  PUBLISHED
+  GRANTED
+  ABANDONED
+}
+
+enum ProjectStatus {
+  APPLIED
+  SANCTIONED
+  ONGOING
+  COMPLETED
+  TERMINATED
+}
+
+enum ContributionLevel {
+  INSTITUTIONAL
+  NATIONAL
+  INTERNATIONAL
+}
+
+enum ConferenceContributionType {
+  PAPER_PRESENTER
+  KEYNOTE
+  INVITED_TALK
+  SESSION_CHAIR
+  REVIEWER
+  ORGANIZER
+  ATTENDEE
+}
+
+enum ProfessionalContributionType {
+  AWARD
+  CONSULTANCY
+  WORKSHOP_CONDUCTED
+  WORKSHOP_ATTENDED
+  GUEST_LECTURE
+  EDITORIAL_BOARD
+  PROFESSIONAL_MEMBERSHIP
+  CERTIFICATION
+  FDP
+  OTHER
+}
+
+enum NotificationType {
+  PUBLICATION_VERIFIED
+  PATENT_APPROVED
+  PROJECT_APPROVED
+  REPORT_DUE
+  SYSTEM
+  ANNOUNCEMENT
+}
+
+enum DocumentType {
+  FIRST_PAGE
+  ACCEPTANCE_LETTER
+  CERTIFICATE
+  FULL_PAPER
+  OTHER
+}
+
+// ─────────────────────────────────────────────
+// TABLE 1: users
+// Core authentication table for all system users
+// ─────────────────────────────────────────────
+
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  password  String
+  name      String
+  role      Role      @default(FACULTY)
+  isActive  Boolean   @default(true)
+  lastLogin DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Relations
+  facultyProfile FacultyProfile?
+  notifications  Notification[]
+
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────
+// TABLE 2: faculty_profiles  ← PRIMARY TABLE
+// Complete faculty academic profile
+// ─────────────────────────────────────────────
+
+model FacultyProfile {
+  id                String    @id @default(cuid())
+  userId            String    @unique
+  employeeId        String    @unique
+  designation       String?
+  department        String?
+  qualification     String?
+  specialization    String?
+  experienceYears   Int?
+  dateOfJoining     DateTime?
+  dateOfBirth       DateTime?
+  gender            Gender
+  phone             String?
+  avatarUrl         String?
+  orcidId           String?
+  googleScholarUrl  String?
+  scopusId          String?
+  linkedinUrl       String?
+  researchInterests String[]  @default([])
+  bio               String?
+  isHod             Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relations
+  user                      User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  publications              Publication[]
+  patents                   Patent[]
+  projects                  Project[]
+  conferenceContributions   ConferenceContribution[]
+  professionalContributions ProfessionalContribution[]
+  publicationAuthors        PublicationAuthor[]
+
+  @@index([department])
+  @@index([employeeId])
+  @@map("faculty_profiles")
+}
+
+// ─────────────────────────────────────────────
+// TABLE 3: publication_types
+// Master data: Journal Article, Conference Paper, etc.
+// ─────────────────────────────────────────────
+
+model PublicationType {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  code        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  publications Publication[]
+
+  @@map("publication_types")
+}
+
+// ─────────────────────────────────────────────
+// TABLE 4: publications  ← CORE TABLE
+// Research publications by faculty
+// ─────────────────────────────────────────────
+
+model Publication {
+  id                String            @id @default(cuid())
+  facultyId         String
+  publicationTypeId String
+  title             String
+  abstract          String?
+  year              Int
+  month             Int?
+  doi               String?
+  url               String?
+  referenceText     String?
+  isbnIssn          String?
+  volume            String?
+  issue             String?
+  pageStart         Int?
+  pageEnd           Int?
+  citationCount     Int               @default(0)
+  isScopusIndexed   Boolean           @default(false)
+  isWosIndexed      Boolean           @default(false)
+  isUgcListed       Boolean           @default(false)
+  status            PublicationStatus @default(DRAFT)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  // Relations
+  faculty         FacultyProfile      @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  publicationType PublicationType     @relation(fields: [publicationTypeId], references: [id])
+  authors         PublicationAuthor[]
+  evidence        Evidence[]
+  venue           PublicationVenue?
+
+  @@index([facultyId])
+  @@index([year])
+  @@index([status])
+  @@index([isScopusIndexed])
+  @@index([publicationTypeId])
+  @@map("publications")
+}
+
+// ─────────────────────────────────────────────
+// TABLE 5: publication_authors
+// All authors (internal faculty + external co-authors)
+// ─────────────────────────────────────────────
+
+model PublicationAuthor {
+  id              String  @id @default(cuid())
+  publicationId   String
+  facultyId       String? // null if external author
+  authorName      String
+  authorEmail     String?
+  affiliation     String?
+  authorOrder     Int
+  isCorresponding Boolean @default(false)
+  isExternal      Boolean @default(false)
+
+  publication Publication     @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+  faculty     FacultyProfile? @relation(fields: [facultyId], references: [id], onDelete: SetNull)
+
+  @@unique([publicationId, authorOrder])
+  @@index([publicationId])
+  @@index([facultyId])
+  @@map("publication_authors")
+}
+
+// ─────────────────────────────────────────────
+// TABLE 6: journals
+// Academic journal metadata with indexing info
+// ─────────────────────────────────────────────
+
+model Journal {
+  id           String   @id @default(cuid())
+  name         String
+  shortName    String?
+  issnPrint    String?
+  issnOnline   String?
+  publisher    String?
+  impactFactor Decimal? @db.Decimal(6, 3)
+  hIndex       Int?
+  isScopus     Boolean  @default(false)
+  isWos        Boolean  @default(false)
+  isUgc        Boolean  @default(false)
+  country      String?
+  websiteUrl   String?
+  createdAt    DateTime @default(now())
+
+  venues PublicationVenue[]
+
+  @@index([isScopus])
+  @@index([isWos])
+  @@map("journals")
+}
+
+// ─────────────────────────────────────────────
+// TABLE 7: conferences
+// Academic conference metadata
+// ─────────────────────────────────────────────
+
+model Conference {
+  id              String   @id @default(cuid())
+  name            String
+  shortName       String?
+  year            Int?
+  location        String?
+  country         String?
+  organizedBy     String?
+  isInternational Boolean  @default(false)
+  isIeee          Boolean  @default(false)
+  isAcm           Boolean  @default(false)
+  isSpringer      Boolean  @default(false)
+  websiteUrl      String?
+  createdAt       DateTime @default(now())
+
+  venues        PublicationVenue[]
+  contributions ConferenceContribution[]
+
+  @@index([isInternational])
+  @@index([isIeee])
+  @@map("conferences")
+}
+
+// ─────────────────────────────────────────────
+// TABLE 8: publication_venue
+// Links a publication to its journal OR conference
+// ─────────────────────────────────────────────
+
+model PublicationVenue {
+  id            String  @id @default(cuid())
+  publicationId String  @unique
+  journalId     String?
+  conferenceId  String?
+
+  publication Publication @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+  journal     Journal?    @relation(fields: [journalId], references: [id], onDelete: SetNull)
+  conference  Conference? @relation(fields: [conferenceId], references: [id], onDelete: SetNull)
+
+  @@index([journalId])
+  @@index([conferenceId])
+  @@map("publication_venue")
+}
+
+// ─────────────────────────────────────────────
+// TABLE 9: evidence
+// Uploaded proof documents for publications
+// ─────────────────────────────────────────────
+
+model Evidence {
+  id            String       @id @default(cuid())
+  publicationId String
+  fileName      String
+  fileUrl       String
+  fileType      String
+  fileSizeKb    Int?
+  documentType  DocumentType @default(OTHER)
+  uploadedAt    DateTime     @default(now())
+
+  publication Publication @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+
+  @@index([publicationId])
+  @@map("evidence")
+}
+
+// ─────────────────────────────────────────────
+// TABLE 10: patents
+// Faculty patents (filed, published, granted)
+// ─────────────────────────────────────────────
+
+model Patent {
+  id            String       @id @default(cuid())
+  facultyId     String
+  title         String
+  applicationNo String?
+  patentNo      String?
+  filingDate    DateTime?
+  grantDate     DateTime?
+  country       String?
+  status        PatentStatus @default(FILED)
+  inventors     String[]     @default([])
+  documentUrl   String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  faculty FacultyProfile @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+
+  @@index([facultyId])
+  @@index([status])
+  @@map("patents")
+}
+
+// ─────────────────────────────────────────────
+// TABLE 11: projects
+// Funded research projects (DST, SERB, AICTE, UGC, etc.)
+// ─────────────────────────────────────────────
+
+model Project {
+  id               String        @id @default(cuid())
+  facultyId        String
+  title            String
+  fundingAgency    String?
+  scheme           String?
+  sanctionedAmount Decimal?      @db.Decimal(15, 2)
+  currency         String        @default("INR")
+  startDate        DateTime?
+  endDate          DateTime?
+  status           ProjectStatus @default(APPLIED)
+  coInvestigators  String[]      @default([])
+  description      String?
+  documentUrl      String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  faculty FacultyProfile @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+
+  @@index([facultyId])
+  @@index([status])
+  @@index([fundingAgency])
+  @@map("projects")
+}
+
+// ─────────────────────────────────────────────
+// TABLE 12: conference_contributions
+// Faculty participation in conferences (presenter, keynote, etc.)
+// ─────────────────────────────────────────────
+
+model ConferenceContribution {
+  id               String                     @id @default(cuid())
+  facultyId        String
+  conferenceId     String
+  contributionType ConferenceContributionType
+  paperTitle       String?
+  awardReceived    String?
+  documentUrl      String?
+  createdAt        DateTime                   @default(now())
+
+  faculty    FacultyProfile @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  conference Conference     @relation(fields: [conferenceId], references: [id], onDelete: Cascade)
+
+  @@unique([facultyId, conferenceId, contributionType])
+  @@index([facultyId])
+  @@index([conferenceId])
+  @@map("conference_contributions")
+}
+
+// ─────────────────────────────────────────────
+// TABLE 13: professional_contributions
+// Awards, workshops, guest lectures, certifications, etc.
+// ─────────────────────────────────────────────
+
+model ProfessionalContribution {
+  id               String                       @id @default(cuid())
+  facultyId        String
+  contributionType ProfessionalContributionType
+  title            String
+  organization     String?
+  description      String?
+  dateFrom         DateTime?
+  dateTo           DateTime?
+  level            ContributionLevel            @default(NATIONAL)
+  documentUrl      String?
+  createdAt        DateTime                     @default(now())
+  updatedAt        DateTime                     @updatedAt
+
+  faculty FacultyProfile @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+
+  @@index([facultyId])
+  @@index([contributionType])
+  @@map("professional_contributions")
+}
+
+// ─────────────────────────────────────────────
+// TABLE 14: notifications
+// System notifications for users
+// ─────────────────────────────────────────────
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      NotificationType @default(SYSTEM)
+  isRead    Boolean          @default(false)
+  actionUrl String?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@map("notifications")
+}
