@@ -1,43 +1,82 @@
-# Simple workflow for deploying static content to GitHub Pages
-name: Deploy static content to Pages
+# CI/CD — Build, Test, then Deploy static frontend to GitHub Pages
+name: CI & Deploy to Pages
 
 on:
-  # Runs on pushes targeting the default branch
   push:
     branches: ["main"]
-
-  # Allows you to run this workflow manually from the Actions tab
+  pull_request:
+    branches: ["main"]
   workflow_dispatch:
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+# Allow only one concurrent deployment
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
-
 jobs:
-  # Single deploy job since we're just deploying
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  # ─── Job 1: CI — Typecheck + Test ─────────────────────────────────────────
+  ci:
+    name: Build & Test
     runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://test:test@localhost:5432/test' }}
+      JWT_ACCESS_SECRET: ${{ secrets.JWT_ACCESS_SECRET || 'test-access-secret-at-least-32-chars-long' }}
+      JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET || 'test-refresh-secret-at-least-32-chars-long' }}
+      CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME || 'test' }}
+      CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY || 'test' }}
+      CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET || 'test' }}
+      COOKIE_SECRET: ${{ secrets.COOKIE_SECRET || 'test-cookie-secret-at-least-32-chars-long' }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: TypeScript type check
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        run: npm test
+
+  # ─── Job 2: Deploy — Only runs if CI passes ───────────────────────────────
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: ci
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
-      - name: Upload artifact
+
+      - name: Upload static frontend
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload entire repository
           path: './public'
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
