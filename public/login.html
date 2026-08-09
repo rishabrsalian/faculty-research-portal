@@ -179,6 +179,10 @@
       gap: 10px;
     }
 
+    .alert.show {
+      display: flex;
+    }
+
     .alert-error {
       background: rgba(239, 68, 68, 0.15);
       border: 1px solid rgba(239, 68, 68, 0.3);
@@ -211,6 +215,23 @@
     .btn-submit:active {
       transform: translateY(0);
     }
+
+    /* Password toggle button */
+    .btn-toggle-pw {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 15px;
+      cursor: pointer;
+      padding: 4px;
+      transition: color 0.2s;
+      line-height: 1;
+    }
+    .btn-toggle-pw:hover { color: var(--accent); }
 
     .quick-logins {
       margin-top: 28px;
@@ -294,8 +315,11 @@
       <div class="form-group">
         <label class="form-label" for="password">Password</label>
         <div class="input-wrapper">
-          <input type="password" id="password" class="form-input" placeholder="••••••••" required autocomplete="current-password">
+          <input type="password" id="password" class="form-input" placeholder="••••••••" required autocomplete="current-password" style="padding-right: 44px;">
           <i class="fa-solid fa-lock input-icon"></i>
+          <button type="button" class="btn-toggle-pw" id="togglePw" aria-label="Toggle password visibility" title="Show / hide password">
+            <i class="fa-solid fa-eye" id="togglePwIcon"></i>
+          </button>
         </div>
       </div>
 
@@ -318,27 +342,48 @@
     </div>
   </div>
 
-  <script>
-    // Redirect to index if already logged in
+    // Redirect if already logged in
     if (localStorage.getItem('accessToken')) {
       window.location.href = '/';
+    }
+
+    // Password show/hide toggle
+    document.getElementById('togglePw').addEventListener('click', () => {
+      const pw = document.getElementById('password');
+      const icon = document.getElementById('togglePwIcon');
+      const isHidden = pw.type === 'password';
+      pw.type = isHidden ? 'text' : 'password';
+      icon.className = isHidden ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye';
+    });
+
+    function showAlert(msg) {
+      document.getElementById('alertMsg').textContent = msg;
+      document.getElementById('alertBox').classList.add('show');
+    }
+
+    function hideAlert() {
+      document.getElementById('alertBox').classList.remove('show');
     }
 
     function fillCredentials(email, password) {
       document.getElementById('email').value = email;
       document.getElementById('password').value = password;
-      document.getElementById('alertBox').style.display = 'none';
+      hideAlert();
     }
 
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
-      const alertBox = document.getElementById('alertBox');
-      const alertMsg = document.getElementById('alertMsg');
       const submitBtn = document.getElementById('submitBtn');
 
-      alertBox.style.display = 'none';
+      // Client-side validation
+      if (!email || !password) {
+        showAlert('Please enter your email and password.');
+        return;
+      }
+
+      hideAlert();
       submitBtn.disabled = true;
       submitBtn.innerHTML = `<i class="fa-solid fa-spinner spinner"></i> Authenticating...`;
 
@@ -356,12 +401,10 @@
           localStorage.setItem('user', JSON.stringify(data.data.user));
           window.location.href = '/';
         } else {
-          alertMsg.textContent = data.message || 'Login failed. Please check credentials.';
-          alertBox.style.display = 'flex';
+          showAlert(data.message || 'Login failed. Please check credentials.');
         }
       } catch (err) {
-        alertMsg.textContent = 'Server connection error. Please try again.';
-        alertBox.style.display = 'flex';
+        showAlert('Server connection error. Please try again.');
       } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = `<span>Sign In to Portal</span><i class="fa-solid fa-arrow-right"></i>`;

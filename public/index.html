@@ -429,6 +429,23 @@
     .tab-content.active {
       display: block;
     }
+
+    .error-banner {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+      padding: 12px 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      font-size: 13px;
+    }
+
+    .error-banner.show {
+      display: flex;
+    }
   </style>
 </head>
 <body>
@@ -483,7 +500,7 @@
     </header>
 
     <!-- Error Banner -->
-    <div id="errorBanner" style="display:none; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#fca5a5; padding:12px 20px; border-radius:12px; margin-bottom:20px; font-size:13px; display:none; align-items:center; gap:10px;">
+    <div id="errorBanner" class="error-banner">
       <i class="fa-solid fa-triangle-exclamation"></i>
       <span id="errorBannerMsg">Failed to load data. Please refresh.</span>
     </div>
@@ -708,14 +725,13 @@
     }
 
     function showError(msg) {
-      const banner = document.getElementById('errorBanner');
       document.getElementById('errorBannerMsg').textContent = msg;
-      banner.style.display = 'flex';
+      document.getElementById('errorBanner').classList.add('show');
     }
 
     async function fetchData() {
       const headers = { 'Authorization': `Bearer ${token}` };
-      document.getElementById('errorBanner').style.display = 'none';
+      document.getElementById('errorBanner').classList.remove('show');
 
       try {
         const [pubRes, patRes, projRes, contRes, facRes] = await Promise.all([
