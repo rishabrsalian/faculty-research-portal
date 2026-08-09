@@ -51,6 +51,20 @@ export class FacultyService {
     });
   }
 
+  async getFacultyByUserId(userId: string) {
+    return prisma.facultyProfile.findUnique({
+      where: { userId },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        publications: true,
+        patents: true,
+        projects: true,
+        conferenceContributions: true,
+        professionalContributions: true,
+      }
+    });
+  }
+
   async updateFacultyProfile(userId: string, data: any) {
     return prisma.facultyProfile.upsert({
       where: { userId },

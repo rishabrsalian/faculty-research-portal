@@ -653,7 +653,8 @@
 
     let user = {};
     try {
-      user = JSON.parse(localStorage.getItem('user')) || {};
+      const raw = localStorage.getItem('user');
+      user = raw ? JSON.parse(raw) : {};
     } catch(e){}
 
     document.getElementById('userName').textContent = user.name || 'Faculty Member';
@@ -689,6 +690,15 @@
         document.getElementById('pageTitle').textContent = titles[tabName][0];
         document.getElementById('pageSubtitle').textContent = titles[tabName][1];
       }
+    }
+
+    function filterPublications() {
+      const query = document.getElementById('pubSearch').value.toLowerCase();
+      const rows = document.querySelectorAll('#publicationsBody tr');
+      rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(query) ? '' : 'none';
+      });
     }
 
     async function fetchData() {

@@ -1,7 +1,7 @@
 import { protect } from '../middleware/auth.middleware';
 import { restrictTo } from '../middleware/rbac.middleware';
 import { Router } from 'express';
-import { getFacultyProfiles, getFacultyById, updateFacultyProfile, deleteFacultyProfile } from '../controllers/faculty.controller';
+import { getFacultyProfiles, getFacultyById, updateFacultyProfile, deleteFacultyProfile, getMyProfile } from '../controllers/faculty.controller';
 import { validate } from '../middleware/validate.middleware';
 import { updateFacultySchema, facultyQuerySchema } from '../validation/faculty.schema';
 
@@ -44,23 +44,23 @@ router.get('/', validate(facultyQuerySchema), getFacultyProfiles);
 
 /**
  * @swagger
- * /faculty/{id}:
+ * /faculty/me:
  *   get:
- *     summary: Get a faculty profile by ID
+ *     summary: Get own faculty profile
  *     tags: [Faculty]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Faculty profile ID
+ *     security:
+ *       - BearerAuth: []
  *     responses:
  *       200:
- *         description: Faculty profile details
+ *         description: Own faculty profile
+ *       401:
+ *         description: Unauthorized
  *       404:
  *         description: Faculty profile not found
  */
+// IMPORTANT: /me must be registered BEFORE /:id to avoid Express treating "me" as an ID
+router.get('/me', protect, getMyProfile);
+
 router.get('/:id', getFacultyById);
 
 /**
