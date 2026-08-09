@@ -482,6 +482,12 @@
       </div>
     </header>
 
+    <!-- Error Banner -->
+    <div id="errorBanner" style="display:none; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#fca5a5; padding:12px 20px; border-radius:12px; margin-bottom:20px; font-size:13px; display:none; align-items:center; gap:10px;">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+      <span id="errorBannerMsg">Failed to load data. Please refresh.</span>
+    </div>
+
     <!-- Stats Grid -->
     <div class="stats-grid">
       <div class="stat-card">
@@ -701,8 +707,15 @@
       });
     }
 
+    function showError(msg) {
+      const banner = document.getElementById('errorBanner');
+      document.getElementById('errorBannerMsg').textContent = msg;
+      banner.style.display = 'flex';
+    }
+
     async function fetchData() {
       const headers = { 'Authorization': `Bearer ${token}` };
+      document.getElementById('errorBanner').style.display = 'none';
 
       try {
         const [pubRes, patRes, projRes, contRes, facRes] = await Promise.all([
@@ -713,7 +726,8 @@
           fetch('/api/v1/faculty?limit=15', { headers }),
         ]);
 
-        if (pubRes.status === 401 || patRes.status === 401) {
+        // Check ALL responses for 401 — any expired token logs the user out
+        if ([pubRes, patRes, projRes, contRes, facRes].some(r => r.status === 401)) {
           logout();
           return;
         }
@@ -725,10 +739,10 @@
         const facs = await facRes.json();
 
         // Update Stats
-        if (pubs.meta) document.getElementById('statPublications').textContent = pubs.meta.total || pubs.data?.length || 0;
-        if (pats.meta) document.getElementById('statPatents').textContent = pats.meta.total || pats.data?.length || 0;
-        if (projs.meta) document.getElementById('statProjects').textContent = projs.meta.total || projs.data?.length || 0;
-        if (facs.meta) document.getElementById('statFaculty').textContent = facs.meta.total || facs.data?.length || 0;
+        if (pubs.meta) document.getElementById('statPublications').textContent = pubs.meta.total ?? pubs.data?.length ?? 0;
+        if (pats.meta) document.getElementById('statPatents').textContent = pats.meta.total ?? pats.data?.length ?? 0;
+        if (projs.meta) document.getElementById('statProjects').textContent = projs.meta.total ?? projs.data?.length ?? 0;
+        if (facs.meta) document.getElementById('statFaculty').textContent = facs.meta.total ?? facs.data?.length ?? 0;
 
         // Render Tables
         renderPublications(pubs.data || []);
@@ -738,6 +752,7 @@
         renderFaculty(facs.data || []);
       } catch (err) {
         console.error('Error fetching portal data:', err);
+        showError('Failed to load portal data. Check your connection and refresh.');
       }
     }
 
