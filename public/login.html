@@ -345,7 +345,7 @@
   <script>
     // Redirect if already logged in
     if (localStorage.getItem('accessToken')) {
-      window.location.href = '/';
+      window.location.href = './index.html';
     }
 
     // Password show/hide toggle
@@ -400,7 +400,7 @@
         if (response.ok && data.success) {
           localStorage.setItem('accessToken', data.data.accessToken);
           localStorage.setItem('user', JSON.stringify(data.data.user));
-          window.location.href = '/';
+          window.location.href = './index.html';
         } else {
           showAlert(data.message || 'Login failed. Please check credentials.');
         }

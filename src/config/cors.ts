@@ -7,9 +7,9 @@ import { env } from './env';
  * Reads allowed origins from the CORS_ORIGINS environment variable
  * (comma-separated list). Supports credentials (cookies for refresh tokens).
  */
-const allowedOrigins: string[] = env.CORS_ORIGINS.split(',').map((o) =>
-  o.trim()
-);
+const allowedOrigins: string[] = env.CORS_ORIGINS.split(',')
+  .map((o) => o.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
 
 export const corsOptions: CorsOptions = {
   origin: (origin, callback) => {
@@ -23,7 +23,18 @@ export const corsOptions: CorsOptions = {
       }
     }
 
-    if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+    const normalizedOrigin = origin.replace(/\/+$/, '');
+
+    const isAllowed = allowedOrigins.some((allowed) => {
+      if (allowed === '*' || allowed === normalizedOrigin) return true;
+      try {
+        const allowedUrl = new URL(allowed);
+        if (allowedUrl.origin === normalizedOrigin) return true;
+      } catch {}
+      return false;
+    });
+
+    if (isAllowed) {
       return callback(null, true);
     }
 

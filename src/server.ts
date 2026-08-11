@@ -25,15 +25,16 @@ async function startServer(): Promise<void> {
   }
 
   // 2. Start HTTP server
-  const server = app.listen(env.PORT, () => {
+  const host = '0.0.0.0';
+  const server = app.listen(env.PORT, host, () => {
     logger.info('─────────────────────────────────────────────');
     logger.info(`🚀  ${env.APP_NAME} is running`);
     logger.info(`🌐  Environment : ${env.NODE_ENV}`);
     logger.info(`🔌  Port        : ${env.PORT}`);
-    logger.info(`📡  API Base    : http://localhost:${env.PORT}/api/${env.API_VERSION}`);
-    logger.info(`🏥  Health      : http://localhost:${env.PORT}/health`);
+    logger.info(`📡  API Base    : http://${host}:${env.PORT}/api/${env.API_VERSION}`);
+    logger.info(`🏥  Health      : http://${host}:${env.PORT}/health`);
     if (env.NODE_ENV !== 'production') {
-      logger.info(`📖  API Docs    : http://localhost:${env.PORT}/api-docs`);
+      logger.info(`📖  API Docs    : http://${host}:${env.PORT}/api-docs`);
     }
     logger.info('─────────────────────────────────────────────');
   });
