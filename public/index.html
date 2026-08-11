@@ -671,7 +671,7 @@
   <script>
     const token = localStorage.getItem('accessToken');
     if (!token) {
-      window.location.href = '/login';
+      window.location.href = './login.html';
     }
 
     let user = {};
@@ -687,7 +687,7 @@
     function logout() {
       localStorage.removeItem('accessToken');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      window.location.href = './login.html';
     }
 
     function switchTab(evt, tabName) {
