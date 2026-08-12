@@ -1,8 +1,6 @@
-import { protect } from '../middleware/auth.middleware';
-import { Router } from 'express';
 import { getPublications, getPublicationById, createPublication, updatePublication, deletePublication } from '../controllers/publication.controller';
-import { validate } from '../middleware/validate.middleware';
 import { createPublicationSchema, updatePublicationSchema, publicationQuerySchema } from '../validation/publication.schema';
+import { createOwnedResourceRouter } from './owned-resource.routes';
 
 /**
  * @swagger
@@ -10,8 +8,6 @@ import { createPublicationSchema, updatePublicationSchema, publicationQuerySchem
  *   name: Publications
  *   description: Research publications
  */
-
-const router = Router();
 
 /**
  * @swagger
@@ -23,7 +19,6 @@ const router = Router();
  *       200:
  *         description: List of publications
  */
-router.get('/', validate(publicationQuerySchema), getPublications);
 
 /**
  * @swagger
@@ -41,7 +36,6 @@ router.get('/', validate(publicationQuerySchema), getPublications);
  *       200:
  *         description: Publication details
  */
-router.get('/:id', getPublicationById);
 
 /**
  * @swagger
@@ -55,7 +49,6 @@ router.get('/:id', getPublicationById);
  *       201:
  *         description: Created
  */
-router.post('/', protect, validate(createPublicationSchema), createPublication);
 
 /**
  * @swagger
@@ -75,7 +68,6 @@ router.post('/', protect, validate(createPublicationSchema), createPublication);
  *       200:
  *         description: Updated
  */
-router.put('/:id', protect, validate(updatePublicationSchema), updatePublication);
 
 /**
  * @swagger
@@ -95,6 +87,18 @@ router.put('/:id', protect, validate(updatePublicationSchema), updatePublication
  *       200:
  *         description: Deleted
  */
-router.delete('/:id', protect, deletePublication);
 
-export default router;
+export default createOwnedResourceRouter({
+  handlers: {
+    list: getPublications,
+    getById: getPublicationById,
+    create: createPublication,
+    update: updatePublication,
+    remove: deletePublication,
+  },
+  schemas: {
+    query: publicationQuerySchema,
+    create: createPublicationSchema,
+    update: updatePublicationSchema,
+  },
+});

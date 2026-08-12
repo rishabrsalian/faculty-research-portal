@@ -1,67 +1,49 @@
 import { prisma } from '../config/database';
+import { Prisma } from '@prisma/client';
+import { QueryFilters, buildListMeta, getSkipTake } from '../utils/pagination.util';
+import { facultyProfileInclude, userSummarySelect } from '../utils/prisma-include.util';
 
 export class FacultyService {
-  async getFacultyProfiles(filters: any, page = 1, limit = 10) {
-    const skip = (page - 1) * limit;
-    
-    const where: any = {};
-    if (filters.search) {
-      where.OR = [
-        { user: { name: { contains: filters.search, mode: 'insensitive' } } },
-        { department: { contains: filters.search, mode: 'insensitive' } }
-      ];
-    }
-    if (filters.department) where.department = { equals: filters.department, mode: 'insensitive' };
-    if (filters.designation) where.designation = { equals: filters.designation, mode: 'insensitive' };
+  async getFacultyProfiles(filters: QueryFilters, page = 1, limit = 10) {
+    const search = filters.search;
+    const where: Prisma.FacultyProfileWhereInput = {
+      ...(search && {
+        OR: [
+          { user: { name: { contains: search, mode: 'insensitive' } } },
+          { department: { contains: search, mode: 'insensitive' } },
+        ],
+      }),
+      ...(filters.department && {
+        department: { equals: filters.department, mode: 'insensitive' as const },
+      }),
+      ...(filters.designation && {
+        designation: { equals: filters.designation, mode: 'insensitive' as const },
+      }),
+    };
 
     const [data, total] = await Promise.all([
       prisma.facultyProfile.findMany({
         where,
-        skip,
-        take: limit,
-        include: {
-          user: { select: { id: true, name: true, email: true } }
-        },
+        ...getSkipTake(page, limit),
+        include: { user: userSummarySelect },
       }),
       prisma.facultyProfile.count({ where }),
     ]);
 
-    return {
-      data,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
-    };
+    return { data, meta: buildListMeta(total, page, limit) };
   }
 
   async getFacultyById(id: string) {
     return prisma.facultyProfile.findUnique({
       where: { id },
-      include: {
-        user: { select: { id: true, name: true, email: true } },
-        publications: true,
-        patents: true,
-        projects: true,
-        conferenceContributions: true,
-        professionalContributions: true,
-      }
+      include: facultyProfileInclude,
     });
   }
 
   async getFacultyByUserId(userId: string) {
     return prisma.facultyProfile.findUnique({
       where: { userId },
-      include: {
-        user: { select: { id: true, name: true, email: true } },
-        publications: true,
-        patents: true,
-        projects: true,
-        conferenceContributions: true,
-        professionalContributions: true,
-      }
+      include: facultyProfileInclude,
     });
   }
 

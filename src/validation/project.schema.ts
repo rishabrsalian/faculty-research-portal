@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ProjectStatus } from '@prisma/client';
+import { facultyIdFilter, listQuerySchema } from './common.schema';
 
 export const createProjectSchema = z.object({
   body: z.object({
@@ -18,12 +19,7 @@ export const updateProjectSchema = z.object({
   body: createProjectSchema.shape.body.partial(),
 });
 
-export const projectQuerySchema = z.object({
-  query: z.object({
-    page: z.string().regex(/^\d+$/).optional(),
-    limit: z.string().regex(/^\d+$/).optional(),
-    search: z.string().optional(),
-    facultyId: z.string().optional(),
-    status: z.nativeEnum(ProjectStatus).optional(),
-  }),
+export const projectQuerySchema = listQuerySchema({
+  ...facultyIdFilter,
+  status: z.nativeEnum(ProjectStatus).optional(),
 });

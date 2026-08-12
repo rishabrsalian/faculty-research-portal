@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { PublicationStatus } from '@prisma/client';
+import { facultyIdFilter, listQuerySchema } from './common.schema';
 
 export const createPublicationSchema = z.object({
   body: z.object({
@@ -28,14 +29,9 @@ export const updatePublicationSchema = z.object({
   body: createPublicationSchema.shape.body.partial(),
 });
 
-export const publicationQuerySchema = z.object({
-  query: z.object({
-    page: z.string().regex(/^\d+$/).optional(),
-    limit: z.string().regex(/^\d+$/).optional(),
-    search: z.string().optional(),
-    year: z.string().regex(/^\d+$/).optional(),
-    facultyId: z.string().optional(),
-    typeId: z.string().optional(),
-    status: z.nativeEnum(PublicationStatus).optional(),
-  }),
+export const publicationQuerySchema = listQuerySchema({
+  ...facultyIdFilter,
+  year: z.string().regex(/^\d+$/).optional(),
+  typeId: z.string().optional(),
+  status: z.nativeEnum(PublicationStatus).optional(),
 });

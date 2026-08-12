@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { facultyIdFilter, listQuerySchema } from './common.schema';
 
 export const createContributionSchema = z.object({
   body: z.object({
@@ -15,11 +16,4 @@ export const updateContributionSchema = z.object({
   body: createContributionSchema.shape.body.partial(),
 });
 
-export const contributionQuerySchema = z.object({
-  query: z.object({
-    page: z.string().regex(/^\d+$/).optional(),
-    limit: z.string().regex(/^\d+$/).optional(),
-    search: z.string().optional(),
-    facultyId: z.string().optional(),
-  }),
-});
+export const contributionQuerySchema = listQuerySchema(facultyIdFilter);

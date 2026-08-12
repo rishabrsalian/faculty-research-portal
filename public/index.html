@@ -729,6 +729,28 @@
       document.getElementById('errorBanner').classList.add('show');
     }
 
+    // ─── Shared rendering helpers ─────────────────────────────────────────────
+    const EM_DASH = '—';
+    const orDash = (value) => value || EM_DASH;
+    const facultyName = (record) => record.faculty?.user?.name || 'Faculty';
+    const statusBadge = (status) => `<span class="badge badge-${status.toLowerCase()}">${status}</span>`;
+
+    /** Fills a table body from `data`, or shows a centered empty-state row. */
+    function renderTable(bodyId, data, colspan, emptyMessage, toCells) {
+      const body = document.getElementById(bodyId);
+      if (!body) return;
+
+      body.innerHTML = data.length
+        ? data.map(item => `<tr>${toCells(item).map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')
+        : `<tr><td colspan="${colspan}" style="text-align: center; color: var(--text-muted);">${emptyMessage}</td></tr>`;
+    }
+
+    /** Shows the total from a list response, falling back to the page length. */
+    function setStat(elementId, response) {
+      if (!response.meta) return;
+      document.getElementById(elementId).textContent = response.meta.total ?? response.data?.length ?? 0;
+    }
+
     async function fetchData() {
       const headers = { 'Authorization': `Bearer ${token}` };
       document.getElementById('errorBanner').classList.remove('show');
@@ -755,10 +777,10 @@
         const facs = await facRes.json();
 
         // Update Stats
-        if (pubs.meta) document.getElementById('statPublications').textContent = pubs.meta.total ?? pubs.data?.length ?? 0;
-        if (pats.meta) document.getElementById('statPatents').textContent = pats.meta.total ?? pats.data?.length ?? 0;
-        if (projs.meta) document.getElementById('statProjects').textContent = projs.meta.total ?? projs.data?.length ?? 0;
-        if (facs.meta) document.getElementById('statFaculty').textContent = facs.meta.total ?? facs.data?.length ?? 0;
+        setStat('statPublications', pubs);
+        setStat('statPatents', pats);
+        setStat('statProjects', projs);
+        setStat('statFaculty', facs);
 
         // Render Tables
         renderPublications(pubs.data || []);
@@ -773,107 +795,62 @@
     }
 
     function renderPublications(data) {
-      const recentBody = document.getElementById('recentPublicationsBody');
-      const pubBody = document.getElementById('publicationsBody');
+      renderTable('recentPublicationsBody', data.slice(0, 5), 5, 'No publications found.', p => [
+        `<strong>${p.title}</strong>`,
+        facultyName(p),
+        p.year,
+        `${p.isScopusIndexed ? '<span class="badge badge-sanctioned">Scopus</span>' : ''} ${p.isWosIndexed ? '<span class="badge badge-accepted">WoS</span>' : ''}`,
+        statusBadge(p.status),
+      ]);
 
-      if (!data.length) {
-        recentBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">No publications found.</td></tr>`;
-        pubBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">No publications found.</td></tr>`;
-        return;
-      }
-
-      recentBody.innerHTML = data.slice(0, 5).map(p => `
-        <tr>
-          <td><strong>${p.title}</strong></td>
-          <td>${p.faculty?.user?.name || 'Faculty'}</td>
-          <td>${p.year}</td>
-          <td>${p.isScopusIndexed ? '<span class="badge badge-sanctioned">Scopus</span>' : ''} ${p.isWosIndexed ? '<span class="badge badge-accepted">WoS</span>' : ''}</td>
-          <td><span class="badge badge-${p.status.toLowerCase()}">${p.status}</span></td>
-        </tr>
-      `).join('');
-
-      pubBody.innerHTML = data.map(p => `
-        <tr>
-          <td><strong>${p.title}</strong></td>
-          <td>${p.faculty?.user?.name || 'Faculty'}</td>
-          <td>${p.publicationType?.name || 'Paper'}</td>
-          <td>${p.year}</td>
-          <td>${p.doi ? `<a href="https://doi.org/${p.doi}" target="_blank" style="color: var(--accent);">${p.doi}</a>` : '—'}</td>
-          <td><span class="badge badge-${p.status.toLowerCase()}">${p.status}</span></td>
-        </tr>
-      `).join('');
+      renderTable('publicationsBody', data, 6, 'No publications found.', p => [
+        `<strong>${p.title}</strong>`,
+        facultyName(p),
+        p.publicationType?.name || 'Paper',
+        p.year,
+        p.doi ? `<a href="https://doi.org/${p.doi}" target="_blank" style="color: var(--accent);">${p.doi}</a>` : EM_DASH,
+        statusBadge(p.status),
+      ]);
     }
 
     function renderPatents(data) {
-      const body = document.getElementById('patentsBody');
-      if (!data.length) {
-        body.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">No patents found.</td></tr>`;
-        return;
-      }
-
-      body.innerHTML = data.map(p => `
-        <tr>
-          <td><strong>${p.title}</strong></td>
-          <td>${p.faculty?.user?.name || 'Faculty'}</td>
-          <td>${p.applicationNo || '—'}</td>
-          <td><span class="badge badge-${p.status.toLowerCase()}">${p.status}</span></td>
-          <td>${p.filingDate ? new Date(p.filingDate).toLocaleDateString() : '—'}</td>
-        </tr>
-      `).join('');
+      renderTable('patentsBody', data, 5, 'No patents found.', p => [
+        `<strong>${p.title}</strong>`,
+        facultyName(p),
+        orDash(p.applicationNo),
+        statusBadge(p.status),
+        p.filingDate ? new Date(p.filingDate).toLocaleDateString() : EM_DASH,
+      ]);
     }
 
     function renderProjects(data) {
-      const body = document.getElementById('projectsBody');
-      if (!data.length) {
-        body.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">No projects found.</td></tr>`;
-        return;
-      }
-
-      body.innerHTML = data.map(p => `
-        <tr>
-          <td><strong>${p.title}</strong></td>
-          <td>${p.faculty?.user?.name || 'Faculty'}</td>
-          <td>${p.fundingAgency || '—'}</td>
-          <td>${p.sanctionedAmount ? '₹' + Number(p.sanctionedAmount).toLocaleString('en-IN') : '—'}</td>
-          <td><span class="badge badge-${p.status.toLowerCase()}">${p.status}</span></td>
-        </tr>
-      `).join('');
+      renderTable('projectsBody', data, 5, 'No projects found.', p => [
+        `<strong>${p.title}</strong>`,
+        facultyName(p),
+        orDash(p.fundingAgency),
+        p.sanctionedAmount ? '₹' + Number(p.sanctionedAmount).toLocaleString('en-IN') : EM_DASH,
+        statusBadge(p.status),
+      ]);
     }
 
     function renderContributions(data) {
-      const body = document.getElementById('contributionsBody');
-      if (!data.length) {
-        body.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">No contributions found.</td></tr>`;
-        return;
-      }
-
-      body.innerHTML = data.map(c => `
-        <tr>
-          <td><strong>${c.title}</strong></td>
-          <td>${c.faculty?.user?.name || 'Faculty'}</td>
-          <td>${c.contributionType}</td>
-          <td>${c.organization || '—'}</td>
-          <td><span class="badge badge-accepted">${c.level}</span></td>
-        </tr>
-      `).join('');
+      renderTable('contributionsBody', data, 5, 'No contributions found.', c => [
+        `<strong>${c.title}</strong>`,
+        facultyName(c),
+        c.contributionType,
+        orDash(c.organization),
+        `<span class="badge badge-accepted">${c.level}</span>`,
+      ]);
     }
 
     function renderFaculty(data) {
-      const body = document.getElementById('facultyBody');
-      if (!data.length) {
-        body.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">No faculty profiles found.</td></tr>`;
-        return;
-      }
-
-      body.innerHTML = data.map(f => `
-        <tr>
-          <td><strong>${f.user?.name || 'Faculty'}</strong></td>
-          <td>${f.employeeId || '—'}</td>
-          <td>${f.department || '—'}</td>
-          <td>${f.designation || '—'}</td>
-          <td>${f.specialization || '—'}</td>
-        </tr>
-      `).join('');
+      renderTable('facultyBody', data, 5, 'No faculty profiles found.', f => [
+        `<strong>${f.user?.name || 'Faculty'}</strong>`,
+        orDash(f.employeeId),
+        orDash(f.department),
+        orDash(f.designation),
+        orDash(f.specialization),
+      ]);
     }
 
     // Initial load
