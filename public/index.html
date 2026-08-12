@@ -678,7 +678,10 @@
     try {
       const raw = localStorage.getItem('user');
       user = raw ? JSON.parse(raw) : {};
-    } catch(e){}
+    } catch (e) {
+      console.error('Stored user profile is corrupt and was discarded:', e);
+      localStorage.removeItem('user');
+    }
 
     document.getElementById('userName').textContent = user.name || 'Faculty Member';
     document.getElementById('userRole').textContent = user.role || 'FACULTY';
@@ -734,25 +737,34 @@
       document.getElementById('errorBanner').classList.remove('show');
 
       try {
-        const [pubRes, patRes, projRes, contRes, facRes] = await Promise.all([
-          fetch('/api/v1/publications?limit=15', { headers }),
-          fetch('/api/v1/patents?limit=15', { headers }),
-          fetch('/api/v1/projects?limit=15', { headers }),
-          fetch('/api/v1/contributions?limit=15', { headers }),
-          fetch('/api/v1/faculty?limit=15', { headers }),
-        ]);
+        const endpoints = {
+          publications: '/api/v1/publications?limit=15',
+          patents: '/api/v1/patents?limit=15',
+          projects: '/api/v1/projects?limit=15',
+          contributions: '/api/v1/contributions?limit=15',
+          faculty: '/api/v1/faculty?limit=15',
+        };
+
+        const responses = await Promise.all(
+          Object.values(endpoints).map(url => fetch(url, { headers }))
+        );
 
         // Check ALL responses for 401 — any expired token logs the user out
-        if ([pubRes, patRes, projRes, contRes, facRes].some(r => r.status === 401)) {
+        if (responses.some(r => r.status === 401)) {
           logout();
           return;
         }
 
-        const pubs = await pubRes.json();
-        const pats = await patRes.json();
-        const projs = await projRes.json();
-        const conts = await contRes.json();
-        const facs = await facRes.json();
+        const payloads = await Promise.all(responses.map(parseResponse));
+        const names = Object.keys(endpoints);
+        const failures = names.filter((_, i) => !payloads[i].ok);
+
+        if (failures.length) {
+          const reason = payloads.find(p => !p.ok).message;
+          showError(`Failed to load ${failures.join(', ')}: ${reason}`);
+        }
+
+        const [pubs, pats, projs, conts, facs] = payloads.map(p => p.body);
 
         // Update Stats
         if (pubs.meta) document.getElementById('statPublications').textContent = pubs.meta.total ?? pubs.data?.length ?? 0;
@@ -770,6 +782,23 @@
         console.error('Error fetching portal data:', err);
         showError('Failed to load portal data. Check your connection and refresh.');
       }
+    }
+
+    // Turns a response into { ok, body, message } so a failing endpoint reports
+    // its API error instead of silently rendering an empty table.
+    async function parseResponse(res) {
+      let body = {};
+      try {
+        body = await res.json();
+      } catch (err) {
+        console.error(`Non-JSON response from ${res.url} (HTTP ${res.status}):`, err);
+        return { ok: false, body: {}, message: `HTTP ${res.status}` };
+      }
+      if (!res.ok || body.success === false) {
+        console.error(`Request to ${res.url} failed (HTTP ${res.status}):`, body);
+        return { ok: false, body, message: body.message || `HTTP ${res.status}` };
+      }
+      return { ok: true, body, message: '' };
     }
 
     function renderPublications(data) {

@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { AppError } from '../middleware/error.middleware';
 import { publicationService } from '../services/publication.service';
 import { prisma } from '../config/database';
 
@@ -18,8 +19,7 @@ export const getPublications = async (req: Request, res: Response) => {
 export const getPublicationById = async (req: Request, res: Response) => {
   const publication = await publicationService.getPublicationById(req.params.id);
   if (!publication) {
-    res.status(404).json({ success: false, message: 'Publication not found' });
-    return;
+    throw new AppError('Publication not found', 404, 'NOT_FOUND');
   }
   res.status(200).json({ success: true, data: publication });
 };
@@ -30,8 +30,7 @@ export const createPublication = async (req: Request, res: Response) => {
     facultyId = await getFacultyIdFromUserId(req.user!.sub);
   }
   if (!facultyId) {
-    res.status(400).json({ success: false, message: 'Faculty profile required to create publication' });
-    return;
+    throw new AppError('Faculty profile required to create publication', 400, 'BAD_REQUEST');
   }
 
   const publication = await publicationService.createPublication(facultyId, req.body);
@@ -41,14 +40,12 @@ export const createPublication = async (req: Request, res: Response) => {
 export const updatePublication = async (req: Request, res: Response) => {
   const publication = await publicationService.getPublicationById(req.params.id);
   if (!publication) {
-    res.status(404).json({ success: false, message: 'Publication not found' });
-    return;
+    throw new AppError('Publication not found', 404, 'NOT_FOUND');
   }
   
   const myFacultyId = await getFacultyIdFromUserId(req.user!.sub);
   if (req.user?.role !== 'ADMIN' && publication.facultyId !== myFacultyId) {
-    res.status(403).json({ success: false, message: 'Forbidden' });
-    return;
+    throw new AppError('Forbidden', 403, 'FORBIDDEN');
   }
 
   const updated = await publicationService.updatePublication(req.params.id, req.body);
@@ -58,14 +55,12 @@ export const updatePublication = async (req: Request, res: Response) => {
 export const deletePublication = async (req: Request, res: Response) => {
   const publication = await publicationService.getPublicationById(req.params.id);
   if (!publication) {
-    res.status(404).json({ success: false, message: 'Publication not found' });
-    return;
+    throw new AppError('Publication not found', 404, 'NOT_FOUND');
   }
 
   const myFacultyId = await getFacultyIdFromUserId(req.user!.sub);
   if (req.user?.role !== 'ADMIN' && publication.facultyId !== myFacultyId) {
-    res.status(403).json({ success: false, message: 'Forbidden' });
-    return;
+    throw new AppError('Forbidden', 403, 'FORBIDDEN');
   }
 
   await publicationService.deletePublication(req.params.id);

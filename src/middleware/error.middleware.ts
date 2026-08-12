@@ -13,11 +13,19 @@ export class AppError extends Error {
   public readonly code: string;
   public readonly isOperational: boolean;
 
-  constructor(message: string, statusCode = 500, code = 'INTERNAL_SERVER_ERROR') {
+  constructor(
+    message: string,
+    statusCode = 500,
+    code = 'INTERNAL_SERVER_ERROR',
+    options?: { cause?: unknown }
+  ) {
     super(message);
     this.statusCode = statusCode;
     this.code = code;
     this.isOperational = true; // Distinguishes from programming errors
+    if (options?.cause !== undefined) {
+      this.cause = options.cause;
+    }
     Error.captureStackTrace(this, this.constructor);
   }
 }
@@ -37,8 +45,20 @@ export function errorHandler(
   err: Error,
   _req: Request,
   res: Response,
-  _next: NextFunction
+  next: NextFunction
 ): void {
+  // 0. Response already (partially) sent — Express must destroy the socket,
+  //    otherwise the error is lost behind an ERR_HTTP_HEADERS_SENT throw.
+  if (res.headersSent) {
+    logger.error('Error after response headers were sent:', {
+      message: err.message,
+      stack: err.stack,
+      name: err.name,
+    });
+    next(err);
+    return;
+  }
+
   // 1. Zod Validation Errors
   if (err instanceof ZodError) {
     const errors = err.errors.map((e) => ({
@@ -57,6 +77,14 @@ export function errorHandler(
 
   // 2. Custom Operational Errors (AppError)
   if (err instanceof AppError && err.isOperational) {
+    if (err.statusCode >= 500) {
+      logger.error('Operational error:', {
+        message: err.message,
+        code: err.code,
+        stack: err.stack,
+        cause: err.cause,
+      });
+    }
     res.status(err.statusCode).json({
       success: false,
       message: err.message,
@@ -89,6 +117,14 @@ export function errorHandler(
       });
       return;
     }
+
+    // Any other Prisma failure is a server-side problem — log it before the
+    // generic 500 below so the DB error code is not lost.
+    logger.error('Unhandled Prisma error:', {
+      code: err.code,
+      message: err.message,
+      meta: err.meta,
+    });
   }
 
   // 4. JWT Errors (handled by auth middleware, but caught here as fallback)

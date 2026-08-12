@@ -26,7 +26,7 @@ export class AuthController {
    * Refresh access token
    */
   public async refresh(req: Request, res: Response) {
-    const refreshToken = req.cookies.refreshToken;
+    const refreshToken = req.cookies?.refreshToken;
     const tokens = await authService.refreshToken(refreshToken);
 
     // Rotate refresh token

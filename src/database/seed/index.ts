@@ -88,9 +88,12 @@ async function main() {
 }
 
 main()
-  .then(() => prisma.$disconnect())
-  .catch(async (e) => {
+  .catch((e) => {
     console.error('❌ Seeding failed:', e);
-    await prisma.$disconnect();
-    process.exit(1);
+    process.exitCode = 1;
+  })
+  .finally(() => prisma.$disconnect())
+  .catch((e) => {
+    console.error('❌ Failed to disconnect Prisma after seeding:', e);
+    process.exitCode = 1;
   });

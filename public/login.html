@@ -405,6 +405,7 @@
           showAlert(data.message || 'Login failed. Please check credentials.');
         }
       } catch (err) {
+        console.error('Login request failed:', err);
         showAlert('Server connection error. Please try again.');
       } finally {
         submitBtn.disabled = false;
