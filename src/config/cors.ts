@@ -9,7 +9,10 @@ import { env } from './env';
  */
 const allowedOrigins: string[] = env.CORS_ORIGINS.split(',')
   .map((o) => o.trim().replace(/\/+$/, ''))
-  .filter(Boolean);
+  .filter(Boolean)
+  // A wildcard cannot be combined with `credentials: true` — it would let any
+  // site read authenticated responses. Configure explicit origins instead.
+  .filter((o) => o !== '*');
 
 export const corsOptions: CorsOptions = {
   origin: (origin, callback) => {
@@ -17,7 +20,7 @@ export const corsOptions: CorsOptions = {
     if (!origin) return callback(null, true);
 
     // In development mode, automatically allow any localhost / 127.0.0.1 port
-    if (env.NODE_ENV !== 'production') {
+    if (env.NODE_ENV === 'development') {
       if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
         return callback(null, true);
       }
@@ -26,7 +29,7 @@ export const corsOptions: CorsOptions = {
     const normalizedOrigin = origin.replace(/\/+$/, '');
 
     const isAllowed = allowedOrigins.some((allowed) => {
-      if (allowed === '*' || allowed === normalizedOrigin) return true;
+      if (allowed === normalizedOrigin) return true;
       try {
         const allowedUrl = new URL(allowed);
         if (allowedUrl.origin === normalizedOrigin) return true;
@@ -38,7 +41,9 @@ export const corsOptions: CorsOptions = {
       return callback(null, true);
     }
 
-    callback(new Error(`CORS policy: Origin "${origin}" is not allowed.`));
+    // Respond without CORS headers rather than throwing, which would surface
+    // as a 500 through the error handler.
+    callback(null, false);
   },
   credentials: true, // Allow cookies (for refresh token HttpOnly cookie)
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

@@ -33,7 +33,7 @@ async function startServer(): Promise<void> {
     logger.info(`🔌  Port        : ${env.PORT}`);
     logger.info(`📡  API Base    : http://${host}:${env.PORT}/api/${env.API_VERSION}`);
     logger.info(`🏥  Health      : http://${host}:${env.PORT}/health`);
-    if (env.NODE_ENV !== 'production') {
+    if (env.NODE_ENV === 'development') {
       logger.info(`📖  API Docs    : http://${host}:${env.PORT}/api-docs`);
     }
     logger.info('─────────────────────────────────────────────');
