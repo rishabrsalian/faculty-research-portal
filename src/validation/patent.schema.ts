@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { PatentStatus } from '@prisma/client';
+import { facultyIdFilter, listQuerySchema } from './common.schema';
 
 export const createPatentSchema = z.object({
   body: z.object({
@@ -18,12 +19,7 @@ export const updatePatentSchema = z.object({
   body: createPatentSchema.shape.body.partial(),
 });
 
-export const patentQuerySchema = z.object({
-  query: z.object({
-    page: z.string().regex(/^\d+$/).optional(),
-    limit: z.string().regex(/^\d+$/).optional(),
-    search: z.string().optional(),
-    facultyId: z.string().optional(),
-    status: z.nativeEnum(PatentStatus).optional(),
-  }),
+export const patentQuerySchema = listQuerySchema({
+  ...facultyIdFilter,
+  status: z.nativeEnum(PatentStatus).optional(),
 });

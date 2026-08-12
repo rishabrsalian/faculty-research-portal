@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Gender } from '@prisma/client';
+import { listQuerySchema } from './common.schema';
 
 export const updateFacultySchema = z.object({
   body: z.object({
@@ -21,12 +22,7 @@ export const updateFacultySchema = z.object({
   }),
 });
 
-export const facultyQuerySchema = z.object({
-  query: z.object({
-    page: z.string().regex(/^\d+$/).optional(),
-    limit: z.string().regex(/^\d+$/).optional(),
-    search: z.string().optional(),
-    department: z.string().optional(),
-    designation: z.string().optional(),
-  }),
+export const facultyQuerySchema = listQuerySchema({
+  department: z.string().optional(),
+  designation: z.string().optional(),
 });

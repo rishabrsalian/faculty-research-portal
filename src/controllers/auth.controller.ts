@@ -1,7 +1,9 @@
 import { Request, Response } from 'express';
 import { authService } from '../services/auth.service';
 import { sendSuccess } from '../utils/response.util';
-import { env } from '../config/env';
+import { jwtConfig } from '../config/jwt';
+
+const { maxAge: _maxAge, ...clearCookieOptions } = jwtConfig.cookieOptions;
 
 export class AuthController {
   /**
@@ -12,12 +14,7 @@ export class AuthController {
     const { user, tokens } = await authService.login(email, password);
 
     // Set refresh token in HTTP-only cookie
-    res.cookie('refreshToken', tokens.refreshToken, {
-      httpOnly: true,
-      secure: env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
+    res.cookie('refreshToken', tokens.refreshToken, jwtConfig.cookieOptions);
 
     sendSuccess(res, { user, accessToken: tokens.accessToken }, "Login successful", 200);
   }
@@ -30,12 +27,7 @@ export class AuthController {
     const tokens = await authService.refreshToken(refreshToken);
 
     // Rotate refresh token
-    res.cookie('refreshToken', tokens.refreshToken, {
-      httpOnly: true,
-      secure: env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
+    res.cookie('refreshToken', tokens.refreshToken, jwtConfig.cookieOptions);
 
     sendSuccess(res, { accessToken: tokens.accessToken }, "Token refreshed", 200);
   }
@@ -44,11 +36,7 @@ export class AuthController {
    * Logout user
    */
   public async logout(req: Request, res: Response) {
-    res.clearCookie('refreshToken', {
-      httpOnly: true,
-      secure: env.NODE_ENV === 'production',
-      sameSite: 'strict',
-    });
+    res.clearCookie('refreshToken', clearCookieOptions);
     
     sendSuccess(res, null, "Logout successful", 200);
   }

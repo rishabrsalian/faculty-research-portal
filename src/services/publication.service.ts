@@ -1,50 +1,46 @@
 import { prisma } from '../config/database';
-import { PublicationStatus } from '@prisma/client';
+import { PublicationStatus, Prisma } from '@prisma/client';
+import {
+  QueryFilters,
+  buildListMeta,
+  buildOwnedResourceWhere,
+  getSkipTake,
+} from '../utils/pagination.util';
+import { facultyWithUserNameInclude } from '../utils/prisma-include.util';
+
+const publicationInclude = {
+  ...facultyWithUserNameInclude,
+  publicationType: true,
+  venue: true,
+  authors: true,
+} as const;
 
 export class PublicationService {
-  async getPublications(filters: any, page = 1, limit = 10) {
-    const skip = (page - 1) * limit;
-    
-    const where: any = {};
-    if (filters.search) {
-      where.title = { contains: filters.search, mode: 'insensitive' };
-    }
-    if (filters.year) where.year = parseInt(filters.year);
-    if (filters.facultyId) where.facultyId = filters.facultyId;
-    if (filters.typeId) where.publicationTypeId = filters.typeId;
-    if (filters.status) where.status = filters.status as PublicationStatus;
+  async getPublications(filters: QueryFilters, page = 1, limit = 10) {
+    const where: Prisma.PublicationWhereInput = {
+      ...buildOwnedResourceWhere(filters),
+      ...(filters.year && { year: parseInt(filters.year) }),
+      ...(filters.typeId && { publicationTypeId: filters.typeId }),
+      ...(filters.status && { status: filters.status as PublicationStatus }),
+    };
 
     const [data, total] = await Promise.all([
       prisma.publication.findMany({
         where,
-        skip,
-        take: limit,
-        include: {
-          faculty: { include: { user: { select: { name: true } } } },
-          publicationType: true,
-          venue: true,
-          authors: true,
-        },
-        orderBy: { year: 'desc' }
+        ...getSkipTake(page, limit),
+        include: publicationInclude,
+        orderBy: { year: 'desc' },
       }),
       prisma.publication.count({ where }),
     ]);
 
-    return {
-      data,
-      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
-    };
+    return { data, meta: buildListMeta(total, page, limit) };
   }
 
   async getPublicationById(id: string) {
     return prisma.publication.findUnique({
       where: { id },
-      include: {
-        faculty: { include: { user: { select: { name: true } } } },
-        publicationType: true,
-        venue: true,
-        authors: true,
-      }
+      include: publicationInclude,
     });
   }
 

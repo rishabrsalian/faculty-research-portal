@@ -2,16 +2,26 @@ import jwt from 'jsonwebtoken';
 import { jwtConfig } from '../config/jwt';
 import { JwtPayload, TokenPair } from '../types/auth.types';
 
+/** Issuer/audience claims applied to every token this service signs and verifies. */
+const tokenClaims = {
+  issuer: 'faculty-research-portal',
+  audience: 'frp-client',
+} as const;
+
+function signToken(payload: JwtPayload, secret: string, expiresIn: string): string {
+  return jwt.sign(payload, secret, { ...tokenClaims, expiresIn } as jwt.SignOptions);
+}
+
+function verifyToken(token: string, secret: string): JwtPayload {
+  return jwt.verify(token, secret, tokenClaims) as JwtPayload;
+}
+
 /**
  * Generates an access token (short-lived: 15 minutes).
  * Stored in memory on the client (not in localStorage or cookies).
  */
 export function generateAccessToken(payload: JwtPayload): string {
-  return jwt.sign(payload, jwtConfig.access.secret, {
-    expiresIn: jwtConfig.access.expiresIn as string,
-    issuer: 'faculty-research-portal',
-    audience: 'frp-client',
-  } as jwt.SignOptions);
+  return signToken(payload, jwtConfig.access.secret, jwtConfig.access.expiresIn as string);
 }
 
 /**
@@ -19,11 +29,7 @@ export function generateAccessToken(payload: JwtPayload): string {
  * Stored in an HTTP-only secure cookie on the client.
  */
 export function generateRefreshToken(payload: JwtPayload): string {
-  return jwt.sign(payload, jwtConfig.refresh.secret, {
-    expiresIn: jwtConfig.refresh.expiresIn as string,
-    issuer: 'faculty-research-portal',
-    audience: 'frp-client',
-  } as jwt.SignOptions);
+  return signToken(payload, jwtConfig.refresh.secret, jwtConfig.refresh.expiresIn as string);
 }
 
 /**
@@ -42,10 +48,7 @@ export function generateTokenPair(payload: JwtPayload): TokenPair {
  * Throws if the token is invalid or expired.
  */
 export function verifyAccessToken(token: string): JwtPayload {
-  return jwt.verify(token, jwtConfig.access.secret, {
-    issuer: 'faculty-research-portal',
-    audience: 'frp-client',
-  }) as JwtPayload;
+  return verifyToken(token, jwtConfig.access.secret);
 }
 
 /**
@@ -53,8 +56,5 @@ export function verifyAccessToken(token: string): JwtPayload {
  * Throws if the token is invalid or expired.
  */
 export function verifyRefreshToken(token: string): JwtPayload {
-  return jwt.verify(token, jwtConfig.refresh.secret, {
-    issuer: 'faculty-research-portal',
-    audience: 'frp-client',
-  }) as JwtPayload;
+  return verifyToken(token, jwtConfig.refresh.secret);
 }

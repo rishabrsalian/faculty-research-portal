@@ -22,6 +22,31 @@ export class AppError extends Error {
   }
 }
 
+interface ErrorPayloadExtras {
+  errors?: { field: string; message: string }[];
+  stack?: string | undefined;
+}
+
+/**
+ * Sends the standard error envelope: `success`, `message`, `code`, timestamp
+ * and any extras (field errors, stack in non-production).
+ */
+function sendErrorResponse(
+  res: Response,
+  status: number,
+  message: string,
+  code: string,
+  extras: ErrorPayloadExtras = {}
+): void {
+  res.status(status).json({
+    success: false,
+    message,
+    code,
+    ...extras,
+    timestamp: new Date().toISOString(),
+  });
+}
+
 /**
  * Centralized error handling middleware.
  * Must be the LAST middleware registered in app.ts.
@@ -45,24 +70,13 @@ export function errorHandler(
       field: e.path.join('.'),
       message: e.message,
     }));
-    res.status(422).json({
-      success: false,
-      message: 'Validation failed',
-      code: 'VALIDATION_ERROR',
-      errors,
-      timestamp: new Date().toISOString(),
-    });
+    sendErrorResponse(res, 422, 'Validation failed', 'VALIDATION_ERROR', { errors });
     return;
   }
 
   // 2. Custom Operational Errors (AppError)
   if (err instanceof AppError && err.isOperational) {
-    res.status(err.statusCode).json({
-      success: false,
-      message: err.message,
-      code: err.code,
-      timestamp: new Date().toISOString(),
-    });
+    sendErrorResponse(res, err.statusCode, err.message, err.code);
     return;
   }
 
@@ -71,44 +85,24 @@ export function errorHandler(
     if (err.code === 'P2002') {
       // Unique constraint violation
       const field = (err.meta?.['target'] as string[])?.join(', ') ?? 'field';
-      res.status(409).json({
-        success: false,
-        message: `A record with this ${field} already exists`,
-        code: 'CONFLICT',
-        timestamp: new Date().toISOString(),
-      });
+      sendErrorResponse(res, 409, `A record with this ${field} already exists`, 'CONFLICT');
       return;
     }
     if (err.code === 'P2025') {
       // Record not found
-      res.status(404).json({
-        success: false,
-        message: 'Record not found',
-        code: 'NOT_FOUND',
-        timestamp: new Date().toISOString(),
-      });
+      sendErrorResponse(res, 404, 'Record not found', 'NOT_FOUND');
       return;
     }
   }
 
   // 4. JWT Errors (handled by auth middleware, but caught here as fallback)
   if (err.name === 'JsonWebTokenError') {
-    res.status(401).json({
-      success: false,
-      message: 'Invalid token',
-      code: 'INVALID_TOKEN',
-      timestamp: new Date().toISOString(),
-    });
+    sendErrorResponse(res, 401, 'Invalid token', 'INVALID_TOKEN');
     return;
   }
 
   if (err.name === 'TokenExpiredError') {
-    res.status(401).json({
-      success: false,
-      message: 'Token has expired',
-      code: 'TOKEN_EXPIRED',
-      timestamp: new Date().toISOString(),
-    });
+    sendErrorResponse(res, 401, 'Token has expired', 'TOKEN_EXPIRED');
     return;
   }
 
@@ -119,14 +113,12 @@ export function errorHandler(
     name: err.name,
   });
 
-  res.status(500).json({
-    success: false,
-    message:
-      env.NODE_ENV === 'production'
-        ? 'An unexpected error occurred'
-        : err.message,
-    code: 'INTERNAL_SERVER_ERROR',
-    ...(env.NODE_ENV !== 'production' && { stack: err.stack }),
-    timestamp: new Date().toISOString(),
-  });
+  const isProduction = env.NODE_ENV === 'production';
+  sendErrorResponse(
+    res,
+    500,
+    isProduction ? 'An unexpected error occurred' : err.message,
+    'INTERNAL_SERVER_ERROR',
+    isProduction ? {} : { stack: err.stack }
+  );
 }
