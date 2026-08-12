@@ -1,4 +1,8 @@
 import { PrismaClient, ConferenceContributionType, ProfessionalContributionType, ContributionLevel } from '@prisma/client';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+
+/** Prisma error code for a unique constraint violation. */
+const UNIQUE_VIOLATION = 'P2002';
 
 export async function seedConferenceContributions(prisma: PrismaClient): Promise<void> {
   console.log('  🌱 Seeding conference contributions...');
@@ -63,8 +67,14 @@ export async function seedConferenceContributions(prisma: PrismaClient): Promise
           paperTitle: c.paperTitle ?? undefined,
         },
       });
-    } catch (_) {
-      // Skip duplicate unique constraint violations (same faculty+conf+type)
+    } catch (error) {
+      // Skip duplicates (same faculty+conf+type); surface anything else
+      if (
+        !(error instanceof PrismaClientKnownRequestError) ||
+        error.code !== UNIQUE_VIOLATION
+      ) {
+        throw error;
+      }
     }
   }
 

@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { AppError } from '../middleware/error.middleware';
 import { projectService } from '../services/project.service';
 import { prisma } from '../config/database';
 
@@ -18,8 +19,7 @@ export const getProjects = async (req: Request, res: Response) => {
 export const getProjectById = async (req: Request, res: Response) => {
   const project = await projectService.getProjectById(req.params.id);
   if (!project) {
-    res.status(404).json({ success: false, message: 'Project not found' });
-    return;
+    throw new AppError('Project not found', 404, 'NOT_FOUND');
   }
   res.status(200).json({ success: true, data: project });
 };
@@ -30,8 +30,7 @@ export const createProject = async (req: Request, res: Response) => {
      facultyId = await getFacultyIdFromUserId(req.user!.sub);
   }
   if (!facultyId) {
-    res.status(400).json({ success: false, message: 'Faculty profile required' });
-    return;
+    throw new AppError('Faculty profile required', 400, 'BAD_REQUEST');
   }
 
   const project = await projectService.createProject(facultyId, req.body);
@@ -41,14 +40,12 @@ export const createProject = async (req: Request, res: Response) => {
 export const updateProject = async (req: Request, res: Response) => {
   const project = await projectService.getProjectById(req.params.id);
   if (!project) {
-    res.status(404).json({ success: false, message: 'Project not found' });
-    return;
+    throw new AppError('Project not found', 404, 'NOT_FOUND');
   }
   
   const myFacultyId = await getFacultyIdFromUserId(req.user!.sub);
   if (req.user?.role !== 'ADMIN' && project.facultyId !== myFacultyId) {
-     res.status(403).json({ success: false, message: 'Forbidden' });
-     return;
+    throw new AppError('Forbidden', 403, 'FORBIDDEN');
   }
 
   const updated = await projectService.updateProject(req.params.id, req.body);
@@ -58,14 +55,12 @@ export const updateProject = async (req: Request, res: Response) => {
 export const deleteProject = async (req: Request, res: Response) => {
   const project = await projectService.getProjectById(req.params.id);
   if (!project) {
-    res.status(404).json({ success: false, message: 'Project not found' });
-    return;
+    throw new AppError('Project not found', 404, 'NOT_FOUND');
   }
 
   const myFacultyId = await getFacultyIdFromUserId(req.user!.sub);
   if (req.user?.role !== 'ADMIN' && project.facultyId !== myFacultyId) {
-     res.status(403).json({ success: false, message: 'Forbidden' });
-     return;
+    throw new AppError('Forbidden', 403, 'FORBIDDEN');
   }
 
   await projectService.deleteProject(req.params.id);

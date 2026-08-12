@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { AppError } from '../middleware/error.middleware';
 import { patentService } from '../services/patent.service';
 import { prisma } from '../config/database';
 
@@ -18,8 +19,7 @@ export const getPatents = async (req: Request, res: Response) => {
 export const getPatentById = async (req: Request, res: Response) => {
   const patent = await patentService.getPatentById(req.params.id);
   if (!patent) {
-    res.status(404).json({ success: false, message: 'Patent not found' });
-    return;
+    throw new AppError('Patent not found', 404, 'NOT_FOUND');
   }
   res.status(200).json({ success: true, data: patent });
 };
@@ -30,8 +30,7 @@ export const createPatent = async (req: Request, res: Response) => {
      facultyId = await getFacultyIdFromUserId(req.user!.sub);
   }
   if (!facultyId) {
-    res.status(400).json({ success: false, message: 'Faculty profile required' });
-    return;
+    throw new AppError('Faculty profile required', 400, 'BAD_REQUEST');
   }
 
   const patent = await patentService.createPatent(facultyId, req.body);
@@ -41,14 +40,12 @@ export const createPatent = async (req: Request, res: Response) => {
 export const updatePatent = async (req: Request, res: Response) => {
   const patent = await patentService.getPatentById(req.params.id);
   if (!patent) {
-    res.status(404).json({ success: false, message: 'Patent not found' });
-    return;
+    throw new AppError('Patent not found', 404, 'NOT_FOUND');
   }
   
   const myFacultyId = await getFacultyIdFromUserId(req.user!.sub);
   if (req.user?.role !== 'ADMIN' && patent.facultyId !== myFacultyId) {
-     res.status(403).json({ success: false, message: 'Forbidden' });
-     return;
+    throw new AppError('Forbidden', 403, 'FORBIDDEN');
   }
 
   const updated = await patentService.updatePatent(req.params.id, req.body);
@@ -58,14 +55,12 @@ export const updatePatent = async (req: Request, res: Response) => {
 export const deletePatent = async (req: Request, res: Response) => {
   const patent = await patentService.getPatentById(req.params.id);
   if (!patent) {
-    res.status(404).json({ success: false, message: 'Patent not found' });
-    return;
+    throw new AppError('Patent not found', 404, 'NOT_FOUND');
   }
 
   const myFacultyId = await getFacultyIdFromUserId(req.user!.sub);
   if (req.user?.role !== 'ADMIN' && patent.facultyId !== myFacultyId) {
-     res.status(403).json({ success: false, message: 'Forbidden' });
-     return;
+    throw new AppError('Forbidden', 403, 'FORBIDDEN');
   }
 
   await patentService.deletePatent(req.params.id);

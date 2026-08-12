@@ -15,7 +15,10 @@ async function startServer(): Promise<void> {
       logger.info('✅  Database connection established');
       connected = true;
     } catch (error) {
-      logger.warn(`⚠️  Database connection attempt ${attempts} failed. Retrying in 2s...`);
+      logger.warn(
+        `⚠️  Database connection attempt ${attempts} failed. Retrying in 2s...`,
+        error
+      );
       if (attempts >= 5) {
         logger.error('❌  Failed to connect to database after 5 attempts:', error);
         process.exit(1);
@@ -40,27 +43,49 @@ async function startServer(): Promise<void> {
   });
 
   // ─── Graceful Shutdown ────────────────────────────────────────────────────────
-  const shutdown = async (signal: string): Promise<void> => {
+  const shutdown = (signal: string, exitCode = 0): void => {
     logger.info(`\n📴  Received ${signal}. Shutting down gracefully...`);
-    server.close(async () => {
-      await disconnectDatabase();
-      logger.info('✅  Database disconnected. Process exiting.');
-      process.exit(0);
-    });
 
-    // Force exit after 10 seconds if graceful shutdown fails
-    setTimeout(() => {
+    // Force exit if graceful shutdown does not complete in time
+    const forceExitTimer = setTimeout(() => {
       logger.error('⚠️  Forced shutdown after timeout.');
       process.exit(1);
     }, 10_000);
+
+    server.close((closeError) => {
+      if (closeError) {
+        logger.error('❌  Error while closing HTTP server:', closeError);
+      }
+      disconnectDatabase()
+        .then(() => {
+          logger.info('✅  Database disconnected. Process exiting.');
+        })
+        .catch((error: unknown) => {
+          logger.error('❌  Failed to disconnect database during shutdown:', error);
+          exitCode = 1;
+        })
+        .finally(() => {
+          clearTimeout(forceExitTimer);
+          process.exit(closeError ? 1 : exitCode);
+        });
+    });
   };
 
   process.on('SIGINT', () => shutdown('SIGINT'));
   process.on('SIGTERM', () => shutdown('SIGTERM'));
 
+  // ─── Server-level Errors (e.g. EADDRINUSE) ────────────────────────────────────
+  server.on('error', (error: Error) => {
+    logger.error('❌  HTTP server error:', error);
+    process.exit(1);
+  });
+
   // ─── Unhandled Rejection Guard ────────────────────────────────────────────────
   process.on('unhandledRejection', (reason: unknown) => {
     logger.error('Unhandled Promise Rejection:', reason);
+    // Process state is undefined after an unobserved rejection: drain
+    // connections and exit non-zero so the supervisor restarts it.
+    shutdown('unhandledRejection', 1);
   });
 
   process.on('uncaughtException', (error: Error) => {
@@ -69,4 +94,7 @@ async function startServer(): Promise<void> {
   });
 }
 
-startServer();
+startServer().catch((error: unknown) => {
+  logger.error('❌  Fatal error during server startup:', error);
+  process.exit(1);
+});

@@ -1,5 +1,6 @@
 import { CorsOptions } from 'cors';
 import { env } from './env';
+import { logger } from '../utils/logger';
 
 /**
  * CORS Configuration
@@ -7,9 +8,26 @@ import { env } from './env';
  * Reads allowed origins from the CORS_ORIGINS environment variable
  * (comma-separated list). Supports credentials (cookies for refresh tokens).
  */
-const allowedOrigins: string[] = env.CORS_ORIGINS.split(',')
+const configuredOrigins: string[] = env.CORS_ORIGINS.split(',')
   .map((o) => o.trim().replace(/\/+$/, ''))
   .filter(Boolean);
+
+/**
+ * Allow-list resolved to bare origins once at startup. Entries that are neither
+ * `*` nor parseable as a URL are reported instead of being silently treated as
+ * "not allowed" on every request.
+ */
+const allowedOrigins: string[] = configuredOrigins.flatMap((allowed) => {
+  if (allowed === '*') return [allowed];
+  try {
+    return [new URL(allowed).origin];
+  } catch (error) {
+    logger.warn(
+      `Ignoring malformed entry "${allowed}" in CORS_ORIGINS: ${(error as Error).message}`
+    );
+    return [];
+  }
+});
 
 export const corsOptions: CorsOptions = {
   origin: (origin, callback) => {
@@ -25,14 +43,9 @@ export const corsOptions: CorsOptions = {
 
     const normalizedOrigin = origin.replace(/\/+$/, '');
 
-    const isAllowed = allowedOrigins.some((allowed) => {
-      if (allowed === '*' || allowed === normalizedOrigin) return true;
-      try {
-        const allowedUrl = new URL(allowed);
-        if (allowedUrl.origin === normalizedOrigin) return true;
-      } catch {}
-      return false;
-    });
+    const isAllowed = allowedOrigins.some(
+      (allowed) => allowed === '*' || allowed === normalizedOrigin
+    );
 
     if (isAllowed) {
       return callback(null, true);

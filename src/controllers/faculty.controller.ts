@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { AppError } from '../middleware/error.middleware';
 import { facultyService } from '../services/faculty.service';
 
 export const getFacultyProfiles = async (req: Request, res: Response) => {
@@ -12,8 +13,7 @@ export const getFacultyProfiles = async (req: Request, res: Response) => {
 export const getFacultyById = async (req: Request, res: Response) => {
   const faculty = await facultyService.getFacultyById(req.params.id);
   if (!faculty) {
-    res.status(404).json({ success: false, message: 'Faculty profile not found' });
-    return;
+    throw new AppError('Faculty profile not found', 404, 'NOT_FOUND');
   }
   res.status(200).json({ success: true, data: faculty });
 };
@@ -22,8 +22,7 @@ export const updateFacultyProfile = async (req: Request, res: Response) => {
   // Using userId from auth token (req.user) to ensure faculty can only update their own profile
   const userId = req.user?.sub;
   if (!userId) {
-    res.status(401).json({ success: false, message: 'Unauthorized' });
-    return;
+    throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');
   }
 
   const updatedProfile = await facultyService.updateFacultyProfile(userId, req.body);
@@ -33,15 +32,13 @@ export const updateFacultyProfile = async (req: Request, res: Response) => {
 export const getMyProfile = async (req: Request, res: Response) => {
   const userId = req.user?.sub;
   if (!userId) {
-    res.status(401).json({ success: false, message: 'Unauthorized' });
-    return;
+    throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');
   }
 
   // facultyProfile is keyed by userId, not profile id
   const faculty = await facultyService.getFacultyByUserId(userId);
   if (!faculty) {
-    res.status(404).json({ success: false, message: 'Faculty profile not found for this user' });
-    return;
+    throw new AppError('Faculty profile not found for this user', 404, 'NOT_FOUND');
   }
   res.status(200).json({ success: true, data: faculty });
 };
@@ -49,14 +46,12 @@ export const getMyProfile = async (req: Request, res: Response) => {
 export const deleteFacultyProfile = async (req: Request, res: Response) => {
   const faculty = await facultyService.getFacultyById(req.params.id);
   if (!faculty) {
-    res.status(404).json({ success: false, message: 'Faculty profile not found' });
-    return;
+    throw new AppError('Faculty profile not found', 404, 'NOT_FOUND');
   }
   
   // Optional: check if ADMIN
   if (req.user?.role !== 'ADMIN') {
-     res.status(403).json({ success: false, message: 'Forbidden' });
-     return;
+    throw new AppError('Forbidden', 403, 'FORBIDDEN');
   }
 
   await facultyService.deleteFacultyProfile(req.params.id);

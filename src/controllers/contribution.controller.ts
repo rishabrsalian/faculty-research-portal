@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { AppError } from '../middleware/error.middleware';
 import { contributionService } from '../services/contribution.service';
 import { prisma } from '../config/database';
 
@@ -18,8 +19,7 @@ export const getContributions = async (req: Request, res: Response) => {
 export const getContributionById = async (req: Request, res: Response) => {
   const contribution = await contributionService.getContributionById(req.params.id);
   if (!contribution) {
-    res.status(404).json({ success: false, message: 'Contribution not found' });
-    return;
+    throw new AppError('Contribution not found', 404, 'NOT_FOUND');
   }
   res.status(200).json({ success: true, data: contribution });
 };
@@ -30,8 +30,7 @@ export const createContribution = async (req: Request, res: Response) => {
      facultyId = await getFacultyIdFromUserId(req.user!.sub);
   }
   if (!facultyId) {
-    res.status(400).json({ success: false, message: 'Faculty profile required' });
-    return;
+    throw new AppError('Faculty profile required', 400, 'BAD_REQUEST');
   }
 
   const contribution = await contributionService.createContribution(facultyId, req.body);
@@ -41,14 +40,12 @@ export const createContribution = async (req: Request, res: Response) => {
 export const updateContribution = async (req: Request, res: Response) => {
   const contribution = await contributionService.getContributionById(req.params.id);
   if (!contribution) {
-    res.status(404).json({ success: false, message: 'Contribution not found' });
-    return;
+    throw new AppError('Contribution not found', 404, 'NOT_FOUND');
   }
   
   const myFacultyId = await getFacultyIdFromUserId(req.user!.sub);
   if (req.user?.role !== 'ADMIN' && contribution.facultyId !== myFacultyId) {
-     res.status(403).json({ success: false, message: 'Forbidden' });
-     return;
+    throw new AppError('Forbidden', 403, 'FORBIDDEN');
   }
 
   const updated = await contributionService.updateContribution(req.params.id, req.body);
@@ -58,14 +55,12 @@ export const updateContribution = async (req: Request, res: Response) => {
 export const deleteContribution = async (req: Request, res: Response) => {
   const contribution = await contributionService.getContributionById(req.params.id);
   if (!contribution) {
-    res.status(404).json({ success: false, message: 'Contribution not found' });
-    return;
+    throw new AppError('Contribution not found', 404, 'NOT_FOUND');
   }
 
   const myFacultyId = await getFacultyIdFromUserId(req.user!.sub);
   if (req.user?.role !== 'ADMIN' && contribution.facultyId !== myFacultyId) {
-     res.status(403).json({ success: false, message: 'Forbidden' });
-     return;
+    throw new AppError('Forbidden', 403, 'FORBIDDEN');
   }
 
   await contributionService.deleteContribution(req.params.id);
