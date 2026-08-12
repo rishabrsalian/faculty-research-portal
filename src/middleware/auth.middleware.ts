@@ -7,12 +7,10 @@ export const protect = async (req: Request, res: Response, next: NextFunction): 
   try {
     let token: string | undefined;
 
-    // Check header for Bearer token
-    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    // Access tokens are only accepted from the Authorization header. Accepting
+    // them from a cookie would make every state-changing route CSRF-able.
+    if (req.headers.authorization?.startsWith('Bearer ')) {
       token = req.headers.authorization.split(' ')[1];
-    } else if (req.cookies?.accessToken) {
-      // Fallback to cookie if exists
-      token = req.cookies.accessToken;
     }
 
     if (!token) {

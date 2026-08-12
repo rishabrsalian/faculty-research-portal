@@ -724,6 +724,13 @@
       });
     }
 
+    function esc(value) {
+      if (value === null || value === undefined) return '';
+      return String(value).replace(/[&<>"']/g, (ch) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[ch]);
+    }
+
     function showError(msg) {
       document.getElementById('errorBannerMsg').textContent = msg;
       document.getElementById('errorBanner').classList.add('show');
@@ -784,22 +791,22 @@
 
       recentBody.innerHTML = data.slice(0, 5).map(p => `
         <tr>
-          <td><strong>${p.title}</strong></td>
-          <td>${p.faculty?.user?.name || 'Faculty'}</td>
-          <td>${p.year}</td>
+          <td><strong>${esc(p.title)}</strong></td>
+          <td>${esc(p.faculty?.user?.name || 'Faculty')}</td>
+          <td>${esc(p.year)}</td>
           <td>${p.isScopusIndexed ? '<span class="badge badge-sanctioned">Scopus</span>' : ''} ${p.isWosIndexed ? '<span class="badge badge-accepted">WoS</span>' : ''}</td>
-          <td><span class="badge badge-${p.status.toLowerCase()}">${p.status}</span></td>
+          <td><span class="badge badge-${esc(String(p.status).toLowerCase())}">${esc(p.status)}</span></td>
         </tr>
       `).join('');
 
       pubBody.innerHTML = data.map(p => `
         <tr>
-          <td><strong>${p.title}</strong></td>
-          <td>${p.faculty?.user?.name || 'Faculty'}</td>
-          <td>${p.publicationType?.name || 'Paper'}</td>
-          <td>${p.year}</td>
-          <td>${p.doi ? `<a href="https://doi.org/${p.doi}" target="_blank" style="color: var(--accent);">${p.doi}</a>` : '—'}</td>
-          <td><span class="badge badge-${p.status.toLowerCase()}">${p.status}</span></td>
+          <td><strong>${esc(p.title)}</strong></td>
+          <td>${esc(p.faculty?.user?.name || 'Faculty')}</td>
+          <td>${esc(p.publicationType?.name || 'Paper')}</td>
+          <td>${esc(p.year)}</td>
+          <td>${p.doi ? `<a href="https://doi.org/${esc(p.doi)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent);">${esc(p.doi)}</a>` : '—'}</td>
+          <td><span class="badge badge-${esc(String(p.status).toLowerCase())}">${esc(p.status)}</span></td>
         </tr>
       `).join('');
     }
@@ -813,11 +820,11 @@
 
       body.innerHTML = data.map(p => `
         <tr>
-          <td><strong>${p.title}</strong></td>
-          <td>${p.faculty?.user?.name || 'Faculty'}</td>
-          <td>${p.applicationNo || '—'}</td>
-          <td><span class="badge badge-${p.status.toLowerCase()}">${p.status}</span></td>
-          <td>${p.filingDate ? new Date(p.filingDate).toLocaleDateString() : '—'}</td>
+          <td><strong>${esc(p.title)}</strong></td>
+          <td>${esc(p.faculty?.user?.name || 'Faculty')}</td>
+          <td>${esc(p.applicationNo || '—')}</td>
+          <td><span class="badge badge-${esc(String(p.status).toLowerCase())}">${esc(p.status)}</span></td>
+          <td>${p.filingDate ? esc(new Date(p.filingDate).toLocaleDateString()) : '—'}</td>
         </tr>
       `).join('');
     }
@@ -831,11 +838,11 @@
 
       body.innerHTML = data.map(p => `
         <tr>
-          <td><strong>${p.title}</strong></td>
-          <td>${p.faculty?.user?.name || 'Faculty'}</td>
-          <td>${p.fundingAgency || '—'}</td>
-          <td>${p.sanctionedAmount ? '₹' + Number(p.sanctionedAmount).toLocaleString('en-IN') : '—'}</td>
-          <td><span class="badge badge-${p.status.toLowerCase()}">${p.status}</span></td>
+          <td><strong>${esc(p.title)}</strong></td>
+          <td>${esc(p.faculty?.user?.name || 'Faculty')}</td>
+          <td>${esc(p.fundingAgency || '—')}</td>
+          <td>${p.sanctionedAmount ? '₹' + esc(Number(p.sanctionedAmount).toLocaleString('en-IN')) : '—'}</td>
+          <td><span class="badge badge-${esc(String(p.status).toLowerCase())}">${esc(p.status)}</span></td>
         </tr>
       `).join('');
     }
@@ -849,11 +856,11 @@
 
       body.innerHTML = data.map(c => `
         <tr>
-          <td><strong>${c.title}</strong></td>
-          <td>${c.faculty?.user?.name || 'Faculty'}</td>
-          <td>${c.contributionType}</td>
-          <td>${c.organization || '—'}</td>
-          <td><span class="badge badge-accepted">${c.level}</span></td>
+          <td><strong>${esc(c.title)}</strong></td>
+          <td>${esc(c.faculty?.user?.name || 'Faculty')}</td>
+          <td>${esc(c.contributionType)}</td>
+          <td>${esc(c.organization || '—')}</td>
+          <td><span class="badge badge-accepted">${esc(c.level)}</span></td>
         </tr>
       `).join('');
     }
@@ -867,11 +874,11 @@
 
       body.innerHTML = data.map(f => `
         <tr>
-          <td><strong>${f.user?.name || 'Faculty'}</strong></td>
-          <td>${f.employeeId || '—'}</td>
-          <td>${f.department || '—'}</td>
-          <td>${f.designation || '—'}</td>
-          <td>${f.specialization || '—'}</td>
+          <td><strong>${esc(f.user?.name || 'Faculty')}</strong></td>
+          <td>${esc(f.employeeId || '—')}</td>
+          <td>${esc(f.department || '—')}</td>
+          <td>${esc(f.designation || '—')}</td>
+          <td>${esc(f.specialization || '—')}</td>
         </tr>
       `).join('');
     }

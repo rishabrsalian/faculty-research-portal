@@ -20,6 +20,8 @@ const router = Router();
  *   get:
  *     summary: Get all faculty profiles
  *     tags: [Faculty]
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: query
  *         name: page
@@ -40,7 +42,8 @@ const router = Router();
  *       200:
  *         description: List of faculty profiles
  */
-router.get('/', validate(facultyQuerySchema), getFacultyProfiles);
+// Faculty profiles carry personal data (email, phone, DOB) — authentication required
+router.get('/', protect, validate(facultyQuerySchema), getFacultyProfiles);
 
 /**
  * @swagger
@@ -61,7 +64,7 @@ router.get('/', validate(facultyQuerySchema), getFacultyProfiles);
 // IMPORTANT: /me must be registered BEFORE /:id to avoid Express treating "me" as an ID
 router.get('/me', protect, getMyProfile);
 
-router.get('/:id', getFacultyById);
+router.get('/:id', protect, getFacultyById);
 
 /**
  * @swagger

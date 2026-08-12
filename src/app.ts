@@ -33,7 +33,23 @@ const app: Application = express();
 app.set('trust proxy', 1);
 
 // ─── Security Middleware ───────────────────────────────────────────────────────
-app.use(helmet({ contentSecurityPolicy: false }));
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        // The static pages use inline <style>/<script> blocks and CDN assets.
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://cdnjs.cloudflare.com'],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com', 'https://cdnjs.cloudflare.com'],
+        imgSrc: ["'self'", 'data:', 'https://res.cloudinary.com'],
+        connectSrc: ["'self'"],
+        frameAncestors: ["'none'"],
+        objectSrc: ["'none'"],
+      },
+    },
+  })
+);
 app.use(cors(corsOptions));
 
 // ─── Serve Static Frontend Files ───────────────────────────────────────────────
@@ -78,7 +94,7 @@ if (env.NODE_ENV !== 'test') {
 app.use(httpLogger);
 
 // ─── API Documentation (Swagger UI) ───────────────────────────────────────────
-if (env.NODE_ENV !== 'production') {
+if (env.NODE_ENV === 'development') {
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
     explorer: true,
     customSiteTitle: 'Faculty Research Portal — API Docs',
@@ -91,8 +107,6 @@ app.get('/health', (_req: Request, res: Response) => {
   res.status(200).json({
     success: true,
     message: 'Faculty Research Portal API is running',
-    environment: env.NODE_ENV,
-    version: env.API_VERSION,
     timestamp: new Date().toISOString(),
   });
 });

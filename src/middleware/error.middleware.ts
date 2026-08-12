@@ -122,11 +122,11 @@ export function errorHandler(
   res.status(500).json({
     success: false,
     message:
-      env.NODE_ENV === 'production'
-        ? 'An unexpected error occurred'
-        : err.message,
+      env.NODE_ENV === 'development'
+        ? err.message
+        : 'An unexpected error occurred',
     code: 'INTERNAL_SERVER_ERROR',
-    ...(env.NODE_ENV !== 'production' && { stack: err.stack }),
+    ...(env.NODE_ENV === 'development' && { stack: err.stack }),
     timestamp: new Date().toISOString(),
   });
 }
